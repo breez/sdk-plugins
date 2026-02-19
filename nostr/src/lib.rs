@@ -1,10 +1,10 @@
 use std::{sync::Arc, time::Duration};
 
 use crate::{
-    context::RuntimeContext,
+    context::{ContextAction, RuntimeContext},
     error::NostrError,
     event::{EventManager, NostrEvent, NostrEventDetails, NostrEventListener},
-    handlers::{builder::NostrHandlersBuilder, routines::HandlerRoutines},
+    handlers::{builder::NostrHandlersBuilder, routines::HandlerRoutines, NostrHandlers},
     model::{NostrConfig, NostrManagerInfo},
     nips::nip47::handler::RelayMessageHandler,
     sdk_event::SdkEventListener,
@@ -83,13 +83,29 @@ impl NostrManager {
         }
     }
 
-    pub(crate) async fn new_maybe_interval(ctx: &RuntimeContext) -> Option<Interval> {
+    fn build_handlers<SdkServices>(
+        &self,
+        ctx: &Arc<RuntimeContext>,
+        sdk: &Arc<SdkServices>,
+    ) -> Arc<NostrHandlers>
+    where
+        SdkServices: RelayMessageHandler + SdkEventListener + 'static,
+    {
+        let mut handlers_builder = NostrHandlersBuilder::new(ctx.clone(), self.config.clone());
+
+        handlers_builder.nwc(sdk.clone());
+        handlers_builder.zaps();
+
+        Arc::new(handlers_builder.build())
+    }
+
+    async fn new_maybe_interval(ctx: &RuntimeContext) -> Option<Interval> {
         ctx.persister
             .get_min_interval()
             .map(|interval| tokio::time::interval(Duration::from_secs(interval)))
     }
 
-    pub(crate) async fn min_refresh_interval(maybe_interval: &mut Option<Interval>) -> Option<()> {
+    async fn min_refresh_interval(maybe_interval: &mut Option<Interval>) -> Option<()> {
         match maybe_interval {
             Some(interval) => {
                 interval.tick().await;
@@ -115,9 +131,9 @@ impl<SdkServices: RelayMessageHandler + SdkEventListener + 'static> Plugin<SdkSe
             return;
         }
 
-        let (resub_tx, mut resub_rx) = mpsc::channel::<()>(10);
+        let (action_tx, mut action_rx) = mpsc::channel::<ContextAction>(10);
         let ctx =
-            match RuntimeContext::new(&self.config, storage, self.event_manager.clone(), resub_tx)
+            match RuntimeContext::new(&self.config, storage, self.event_manager.clone(), action_tx)
                 .await
             {
                 Ok(ctx) => Arc::new(ctx),
@@ -126,12 +142,9 @@ impl<SdkServices: RelayMessageHandler + SdkEventListener + 'static> Plugin<SdkSe
                     return;
                 }
             };
-        let mut handlers_builder = NostrHandlersBuilder::new(ctx.clone(), self.config.clone());
-
-        handlers_builder.nwc(sdk.clone());
-        handlers_builder.zaps();
-
-        let handlers = Arc::new(handlers_builder.build());
+        *ctx_lock = Some(ctx.clone());
+        drop(ctx_lock);
+        let handlers = self.build_handlers(&ctx, &sdk);
 
         if let Err(err) = handlers.on_init().await {
             warn!("Could not execute `on_init` routine: {err}");
@@ -145,12 +158,11 @@ impl<SdkServices: RelayMessageHandler + SdkEventListener + 'static> Plugin<SdkSe
         };
 
         if self.config.listen_to_events.is_some_and(|listen| !listen) {
-            *ctx_lock = Some(ctx);
             return;
         }
 
         let thread_ctx = ctx.clone();
-        let event_loop_handle = tokio::spawn(async move {
+        tokio::spawn(async move {
             thread_ctx
                 .event_manager
                 .notify(NostrEvent {
@@ -195,22 +207,29 @@ impl<SdkServices: RelayMessageHandler + SdkEventListener + 'static> Plugin<SdkSe
                                 warn!("Could not execute `on_interval` routine: {err}");
                             }
                         }
-                        Some(_) = resub_rx.recv() => break,
+                        Some(action) = action_rx.recv() => match action {
+                            ContextAction::Shutdown => {
+                                info!("Shutting down Nostr Manager");
+                                if let Err(err) = handlers.on_destroy().await {
+                                    warn!("Could not execute `on_destroy` routine: {err}");
+                                };
+                                ctx.clear().await;
+                            },
+                            ContextAction::Resubscribe => break,
+                        },
                     }
                 }
             }
         });
-
-        if let Err(err) = ctx.event_loop_handle.set(event_loop_handle) {
-            error!("Could not set context's event loop handle: {err:?}");
-        }
-        *ctx_lock = Some(ctx);
     }
 
     async fn on_stop(&self) {
         let mut ctx_lock = self.runtime_ctx.lock().await;
         if let Some(ref ctx) = *ctx_lock {
-            ctx.clear().await;
+            if let Err(err) = ctx.action_trigger.send(ContextAction::Shutdown).await {
+                warn!("Could not send shutdown command: {err}");
+                return;
+            };
             *ctx_lock = None;
         }
     }

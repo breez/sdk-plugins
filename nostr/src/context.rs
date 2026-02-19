@@ -9,17 +9,20 @@ use anyhow::Result;
 use breez_sdk_plugins::PluginStorage;
 use log::{info, warn};
 use nostr_sdk::{Client as NostrClient, EventBuilder, Keys};
-use tokio::sync::{mpsc, Mutex, OnceCell};
-use tokio::task::JoinHandle;
+use tokio::sync::{mpsc, Mutex};
 use tokio_with_wasm::alias as tokio;
+
+pub(crate) enum ContextAction {
+    Shutdown,
+    Resubscribe,
+}
 
 pub(crate) struct RuntimeContext {
     pub client: NostrClient,
     pub our_keys: Keys,
     pub persister: Persister,
     pub event_manager: Arc<EventManager>,
-    pub resubscription_trigger: mpsc::Sender<()>,
-    pub event_loop_handle: OnceCell<JoinHandle<()>>,
+    pub action_trigger: mpsc::Sender<ContextAction>,
     pub replied_event_ids: Mutex<HashSet<String>>,
 }
 
@@ -28,7 +31,7 @@ impl RuntimeContext {
         config: &NostrConfig,
         storage: PluginStorage,
         event_manager: Arc<EventManager>,
-        resub_tx: mpsc::Sender<()>,
+        action_tx: mpsc::Sender<ContextAction>,
     ) -> Result<Self> {
         let persister = Persister::new(storage);
         let client = NostrClient::default();
@@ -42,9 +45,8 @@ impl RuntimeContext {
             client,
             our_keys,
             persister,
-            resubscription_trigger: resub_tx,
-            event_loop_handle: OnceCell::new(),
             event_manager,
+            action_trigger: action_tx,
             replied_event_ids: Mutex::new(HashSet::new()),
         };
         Ok(ctx)
@@ -75,13 +77,10 @@ impl RuntimeContext {
     }
 
     pub(crate) async fn trigger_resubscription(&self) {
-        let _ = self.resubscription_trigger.send(()).await;
+        let _ = self.action_trigger.send(ContextAction::Resubscribe).await;
     }
 
     pub async fn clear(&self) {
-        if let Some(handle) = self.event_loop_handle.get() {
-            handle.abort();
-        }
         self.client.disconnect().await;
         self.event_manager
             .notify(NostrEvent {
