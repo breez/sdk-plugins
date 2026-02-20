@@ -68,19 +68,13 @@ impl NostrManager {
         self.event_manager.remove(id).await
     }
 
-    pub async fn get_info(&self) -> NostrManagerInfo {
+    pub async fn get_info(&self) -> Option<NostrManagerInfo> {
         let lock = self.runtime_ctx.lock().await;
-        let Some(ref ctx) = *lock else {
-            return NostrManagerInfo {
-                is_running: false,
-                ..Default::default()
-            };
-        };
-        NostrManagerInfo {
-            is_running: true,
-            wallet_pubkey: Some(ctx.our_keys.public_key().to_hex()),
-            connected_relays: Some(self.config.relays()),
-        }
+        let ctx = (*lock).as_ref()?;
+        Some(NostrManagerInfo {
+            wallet_pubkey: ctx.our_keys.public_key().to_hex(),
+            connected_relays: self.config.relays(),
+        })
     }
 
     fn build_handlers<SdkServices>(
