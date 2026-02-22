@@ -113,7 +113,7 @@ impl PluginStorage {
         old_value: Option<String>,
     ) -> StorageResult<()> {
         let tx = self.controller.begin_tx();
-        let scoped_key = self.scoped_key(&key);
+        let scoped_key = self.scoped_key(key);
         if let Some(old_value) = old_value {
             if let Some(current_value) = tx.get_item(&scoped_key)? {
                 let current_value = self.decrypt(current_value)?;
