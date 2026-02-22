@@ -1,10 +1,9 @@
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, time::Duration};
 
 use super::{event::NwcEventKind, NostrWalletConnectHandler};
 use crate::{
     event::{NostrEvent, NostrEventDetails},
     handlers::routines::HandlerRoutines,
-    NostrManager,
 };
 use anyhow::Result;
 use nostr_sdk::{Alphabet, Event, Filter, Kind, SingleLetterTag};
@@ -59,7 +58,12 @@ impl HandlerRoutines for NostrWalletConnectHandler {
     }
 
     async fn on_resubscribe(&self, maybe_expiry_interval: &mut Option<Interval>) -> Result<()> {
-        *maybe_expiry_interval = NostrManager::new_maybe_interval(&self.ctx).await;
+        *maybe_expiry_interval = self
+            .ctx
+            .persister
+            .get_min_interval()
+            .map(|interval| tokio::time::interval(Duration::from_secs(interval)));
+
         if let Some(ref mut interval) = maybe_expiry_interval {
             // First time ticks instantly
             interval.tick().await;

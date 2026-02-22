@@ -1,5 +1,10 @@
 use crate::model::Payment;
 
+pub(crate) enum NotificationKind {
+    NIP04 = 23196,
+    NIP44 = 23197,
+}
+
 #[sdk_macros::async_trait]
 pub trait SdkEventListener {
     async fn on_sdk_payment(&self, payment: &Payment);

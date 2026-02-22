@@ -6,7 +6,6 @@ use crate::{
     event::{EventManager, NostrEventListener},
     handlers::{builder::NostrHandlersBuilder, routines::HandlerRoutines, NostrHandlers},
     model::{NostrConfig, NostrManagerInfo},
-    nips::nip47::handler::RelayMessageHandler,
     sdk_event::EventEmitter,
 };
 use breez_sdk_plugins::{Plugin, PluginStorage};
@@ -17,6 +16,9 @@ use tokio::{
     time::Interval,
 };
 use tokio_with_wasm::alias as tokio;
+
+#[cfg(feature = "nip47")]
+use nips::nip47::handler::RelayMessageHandler;
 
 pub(crate) mod context;
 mod encrypt;
@@ -47,7 +49,10 @@ pub struct NostrManager {
     runtime: Mutex<Option<Runtime>>,
 }
 
-pub(crate) trait NostrSdkServices: RelayMessageHandler + EventEmitter + 'static {}
+#[cfg(not(feature = "nip47"))]
+pub(crate) trait NostrSdkServices: EventEmitter + 'static {}
+#[cfg(feature = "nip47")]
+pub(crate) trait NostrSdkServices: EventEmitter + RelayMessageHandler + 'static {}
 
 impl NostrManager {
     /// Creates a new NostrManager instance.
@@ -86,6 +91,7 @@ impl NostrManager {
 }
 
 impl NostrManager {
+    #[allow(unused, unused_mut)]
     fn build_handlers(
         &self,
         ctx: Arc<RuntimeContext>,
@@ -93,7 +99,10 @@ impl NostrManager {
     ) -> Arc<NostrHandlers> {
         let mut handlers_builder = NostrHandlersBuilder::new(ctx, self.config.clone());
 
+        #[cfg(feature = "nip47")]
         handlers_builder.nwc(sdk);
+
+        #[cfg(feature = "nip57")]
         handlers_builder.zaps();
 
         Arc::new(handlers_builder.build())
@@ -107,12 +116,6 @@ impl NostrManager {
             };
         }
         Err(NostrError::generic("Nostr manager is not running."))
-    }
-
-    async fn new_maybe_interval(ctx: &RuntimeContext) -> Option<Interval> {
-        ctx.persister
-            .get_min_interval()
-            .map(|interval| tokio::time::interval(Duration::from_secs(interval)))
     }
 
     async fn min_refresh_interval(maybe_interval: &mut Option<Interval>) -> Option<()> {

@@ -5,7 +5,7 @@ mod sdk_event;
 
 use std::sync::Arc;
 
-use crate::{context::RuntimeContext, error::NostrResult};
+use crate::{context::RuntimeContext, error::NostrResult, nips::nip57::sdk_event::ZapEventHandler};
 
 use log::info;
 use nostr_sdk::Event;
@@ -19,11 +19,15 @@ pub trait ZapReceiptsService {
 
 pub(crate) struct ZapReceiptsHandler {
     pub ctx: Arc<RuntimeContext>,
+    pub event_handler: ZapEventHandler,
 }
 
 impl ZapReceiptsHandler {
     pub(crate) fn new(ctx: Arc<RuntimeContext>) -> Self {
-        Self { ctx }
+        Self {
+            ctx,
+            event_handler: ZapEventHandler {},
+        }
     }
 }
 

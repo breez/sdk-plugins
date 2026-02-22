@@ -24,7 +24,7 @@ tokio_with_wasm = { version = "=0.8.2", features = [
     "sync",
     "time",
 ] }
-nostr-sdk = { version = "0.43.0", features = ["nip04", "nip44", "nip47"] }
+nostr-sdk = { version = "0.43.0", features = ["nip04", "nip44"] }
 web-time = "1.1.0"
 urlencoding = "2.1.3"
 
@@ -35,3 +35,7 @@ uuid = { version = "1.8.0", features = ["v4"] }
 # Wasm dependencies
 [target.'cfg(all(target_family = "wasm", target_os = "unknown"))'.dependencies]
 uuid = { version = "1.8.0", features = ["v4", "js"] }
+
+[features]
+nip47 = ["nostr-sdk/nip47"]
+nip57 = []

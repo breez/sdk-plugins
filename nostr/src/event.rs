@@ -5,16 +5,19 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
 
+#[cfg(feature = "nip47")]
 use crate::nips::nip47::event::NwcEventKind;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum NostrEventDetails {
     Connected,
     Disconnected,
+    #[cfg(feature = "nip47")]
     Nwc {
         kind: NwcEventKind,
         connection_name: Option<String>,
     },
+    #[cfg(feature = "nip57")]
     ZapReceived {
         invoice: String,
     },

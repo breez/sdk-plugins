@@ -24,7 +24,7 @@ use crate::{
     utils,
 };
 use event::NwcEventKind;
-use handler::RelayMessageHandler;
+pub use handler::RelayMessageHandler;
 use sdk_event::NwcEventHandler;
 
 use nostr_sdk::{
@@ -236,7 +236,6 @@ impl NostrWalletConnectHandler {
     ) -> Self {
         let active_connections: Arc<RwLock<ActiveConnections>> = Default::default();
         let event_handler = NwcEventHandler {
-            ctx: ctx.clone(),
             active_connections: active_connections.clone(),
         };
         Self {
