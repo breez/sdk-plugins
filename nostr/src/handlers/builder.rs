@@ -40,8 +40,8 @@ impl NostrHandlersBuilder {
     pub(crate) fn build(self) -> NostrHandlers {
         NostrHandlers {
             ctx: self.ctx,
-            nwc: self.nwc,
-            zaps: self.zaps,
+            nwc: self.nwc.unwrap(),
+            zaps: self.zaps.unwrap(),
         }
     }
 }

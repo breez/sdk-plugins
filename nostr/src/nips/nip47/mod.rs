@@ -1,6 +1,7 @@
 mod error;
 pub mod event;
 pub mod handler;
+mod manager;
 pub mod model;
 mod persist;
 pub(crate) mod routines;

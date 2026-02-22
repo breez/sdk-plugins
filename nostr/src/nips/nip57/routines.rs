@@ -1,5 +1,5 @@
 use super::ZapReceiptsHandler;
-use crate::{handlers::routines::HandlerRoutines, model::Payment};
+use crate::handlers::routines::HandlerRoutines;
 use anyhow::Result;
 use nostr_sdk::{Event, Filter};
 use tokio::time::Interval;
@@ -20,10 +20,6 @@ impl HandlerRoutines for ZapReceiptsHandler {
     }
 
     async fn on_relay_event(&self, _event: &Event) -> Result<()> {
-        Ok(())
-    }
-
-    async fn on_sdk_payment(&self, _payment: &Payment) -> Result<()> {
         Ok(())
     }
 

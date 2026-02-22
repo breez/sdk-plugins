@@ -2,12 +2,12 @@ use std::{sync::Arc, time::Duration};
 
 use crate::{
     context::{ContextAction, RuntimeContext},
-    error::NostrError,
-    event::{EventManager, NostrEvent, NostrEventDetails, NostrEventListener},
+    error::{NostrError, NostrResult},
+    event::{EventManager, NostrEventListener},
     handlers::{builder::NostrHandlersBuilder, routines::HandlerRoutines, NostrHandlers},
     model::{NostrConfig, NostrManagerInfo},
     nips::nip47::handler::RelayMessageHandler,
-    sdk_event::SdkEventListener,
+    sdk_event::EventEmitter,
 };
 use breez_sdk_plugins::{Plugin, PluginStorage};
 use log::{error, info, warn};
@@ -26,7 +26,7 @@ pub mod handlers;
 pub mod model;
 pub mod nips;
 mod persist;
-pub(crate) mod sdk_event;
+pub mod sdk_event;
 pub(crate) mod utils;
 
 pub const DEFAULT_RELAY_URLS: [&str; 4] = [
@@ -36,11 +36,18 @@ pub const DEFAULT_RELAY_URLS: [&str; 4] = [
     "wss://nostr.wine/",
 ];
 
+struct Runtime {
+    ctx: Arc<RuntimeContext>,
+    handlers: Arc<NostrHandlers>,
+}
+
 pub struct NostrManager {
     config: NostrConfig,
     event_manager: Arc<EventManager>,
-    runtime_ctx: Mutex<Option<Arc<RuntimeContext>>>,
+    runtime: Mutex<Option<Runtime>>,
 }
+
+pub(crate) trait NostrSdkServices: RelayMessageHandler + EventEmitter + 'static {}
 
 impl NostrManager {
     /// Creates a new NostrManager instance.
@@ -55,7 +62,7 @@ impl NostrManager {
     pub fn new(config: NostrConfig) -> Self {
         Self {
             config,
-            runtime_ctx: Default::default(),
+            runtime: Default::default(),
             event_manager: Arc::new(EventManager::new()),
         }
     }
@@ -69,28 +76,37 @@ impl NostrManager {
     }
 
     pub async fn get_info(&self) -> Option<NostrManagerInfo> {
-        let lock = self.runtime_ctx.lock().await;
-        let ctx = (*lock).as_ref()?;
+        let lock = self.runtime.lock().await;
+        let runtime = (*lock).as_ref()?;
         Some(NostrManagerInfo {
-            wallet_pubkey: ctx.our_keys.public_key().to_hex(),
+            wallet_pubkey: runtime.ctx.our_keys.public_key().to_hex(),
             connected_relays: self.config.relays(),
         })
     }
+}
 
-    fn build_handlers<SdkServices>(
+impl NostrManager {
+    fn build_handlers(
         &self,
-        ctx: &Arc<RuntimeContext>,
-        sdk: &Arc<SdkServices>,
-    ) -> Arc<NostrHandlers>
-    where
-        SdkServices: RelayMessageHandler + SdkEventListener + 'static,
-    {
-        let mut handlers_builder = NostrHandlersBuilder::new(ctx.clone(), self.config.clone());
+        ctx: Arc<RuntimeContext>,
+        sdk: Arc<dyn NostrSdkServices>,
+    ) -> Arc<NostrHandlers> {
+        let mut handlers_builder = NostrHandlersBuilder::new(ctx, self.config.clone());
 
-        handlers_builder.nwc(sdk.clone());
+        handlers_builder.nwc(sdk);
         handlers_builder.zaps();
 
         Arc::new(handlers_builder.build())
+    }
+
+    pub(crate) async fn handlers(&self) -> NostrResult<Arc<NostrHandlers>> {
+        for _ in 0..3 {
+            match *self.runtime.lock().await {
+                Some(ref runtime) => return Ok(runtime.handlers.clone()),
+                None => tokio::time::sleep(Duration::from_millis(500)).await,
+            };
+        }
+        Err(NostrError::generic("Nostr manager is not running."))
     }
 
     async fn new_maybe_interval(ctx: &RuntimeContext) -> Option<Interval> {
@@ -111,39 +127,49 @@ impl NostrManager {
 }
 
 #[sdk_macros::async_trait]
-impl<SdkServices: RelayMessageHandler + SdkEventListener + 'static> Plugin<SdkServices>
-    for NostrManager
-{
+impl<SdkServices: NostrSdkServices> Plugin<SdkServices> for NostrManager {
     fn id(&self) -> String {
         "breez-nostr".to_string()
     }
 
     async fn on_start(&self, sdk: Arc<SdkServices>, storage: PluginStorage) {
-        let mut ctx_lock = self.runtime_ctx.lock().await;
-        if ctx_lock.is_some() {
+        let mut runtime_lock = self.runtime.lock().await;
+        if runtime_lock.is_some() {
             warn!("Called on_start when service was already running.");
             return;
         }
 
         let (action_tx, mut action_rx) = mpsc::channel::<ContextAction>(10);
-        let ctx =
-            match RuntimeContext::new(&self.config, storage, self.event_manager.clone(), action_tx)
-                .await
-            {
-                Ok(ctx) => Arc::new(ctx),
-                Err(err) => {
-                    error!("Could not create Nostr runtime context: {err:?}");
-                    return;
-                }
-            };
-        *ctx_lock = Some(ctx.clone());
-        drop(ctx_lock);
-        let handlers = self.build_handlers(&ctx, &sdk);
+        let ctx = match RuntimeContext::new(
+            sdk.clone(),
+            &self.config,
+            storage,
+            self.event_manager.clone(),
+            action_tx,
+        )
+        .await
+        {
+            Ok(ctx) => Arc::new(ctx),
+            Err(err) => {
+                error!("Could not create Nostr runtime context: {err:?}");
+                return;
+            }
+        };
+        let handlers = self.build_handlers(ctx.clone(), sdk.clone());
+        *runtime_lock = Some(Runtime {
+            ctx: ctx.clone(),
+            handlers: handlers.clone(),
+        });
+        drop(runtime_lock);
 
         if let Err(err) = handlers.on_init().await {
             warn!("Could not execute `on_init` routine: {err}");
             return;
         }
+
+        if let Err(err) = ctx.add_event_listener(handlers.clone()).await {
+            warn!("Could not add SDK event listener: {err}");
+        };
 
         ctx.client.connect().await;
         if let Err(err) = handlers.on_connect().await {
@@ -157,20 +183,6 @@ impl<SdkServices: RelayMessageHandler + SdkEventListener + 'static> Plugin<SdkSe
 
         let thread_ctx = ctx.clone();
         tokio::spawn(async move {
-            thread_ctx
-                .event_manager
-                .notify(NostrEvent {
-                    details: NostrEventDetails::Connected,
-                    event_id: None,
-                })
-                .await;
-            info!("Successfully connected Nostr client");
-
-            if let Err(err) = handlers.on_connect().await {
-                warn!("Could not execute `on_connect` routine: {err}");
-                return;
-            }
-
             let mut maybe_expiry_interval = None;
             loop {
                 info!("Subscribing to notifications.");
@@ -202,13 +214,7 @@ impl<SdkServices: RelayMessageHandler + SdkEventListener + 'static> Plugin<SdkSe
                             }
                         }
                         Some(action) = action_rx.recv() => match action {
-                            ContextAction::Shutdown => {
-                                info!("Shutting down Nostr Manager");
-                                if let Err(err) = handlers.on_destroy().await {
-                                    warn!("Could not execute `on_destroy` routine: {err}");
-                                };
-                                ctx.clear().await;
-                            },
+                            ContextAction::Shutdown => return,
                             ContextAction::Resubscribe => break,
                         },
                     }
@@ -218,13 +224,23 @@ impl<SdkServices: RelayMessageHandler + SdkEventListener + 'static> Plugin<SdkSe
     }
 
     async fn on_stop(&self) {
-        let mut ctx_lock = self.runtime_ctx.lock().await;
-        if let Some(ref ctx) = *ctx_lock {
-            if let Err(err) = ctx.action_trigger.send(ContextAction::Shutdown).await {
+        info!("Shutting down Nostr Manager");
+        let mut runtime_lock = self.runtime.lock().await;
+        if let Some(ref runtime) = *runtime_lock {
+            if let Err(err) = runtime
+                .ctx
+                .action_trigger
+                .send(ContextAction::Shutdown)
+                .await
+            {
                 warn!("Could not send shutdown command: {err}");
                 return;
             };
-            *ctx_lock = None;
+            runtime.ctx.clear().await;
+            if let Err(err) = runtime.handlers.on_destroy().await {
+                warn!("Could not execute `on_destroy` routine: {err}");
+            };
+            *runtime_lock = None;
         }
     }
 }

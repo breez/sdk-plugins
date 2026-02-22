@@ -4,7 +4,6 @@ use super::{event::NwcEventKind, NostrWalletConnectHandler};
 use crate::{
     event::{NostrEvent, NostrEventDetails},
     handlers::routines::HandlerRoutines,
-    model::{Payment, PaymentState},
     NostrManager,
 };
 use anyhow::Result;
@@ -56,20 +55,6 @@ impl HandlerRoutines for NostrWalletConnectHandler {
             return Ok(());
         }
         self.handle_event_inner(event).await?;
-        Ok(())
-    }
-
-    async fn on_sdk_payment(&self, payment: &Payment) -> Result<()> {
-        match payment.payment_state {
-            PaymentState::Pending => {
-                self.event_handler.handle_zap_receipt(payment).await;
-            }
-            PaymentState::Complete => {
-                self.event_handler.handle_notif_to_relay(payment).await;
-            }
-            _ => {}
-        }
-
         Ok(())
     }
 

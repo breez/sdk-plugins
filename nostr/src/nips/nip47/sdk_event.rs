@@ -15,7 +15,9 @@ use crate::{
     context::RuntimeContext,
     encrypt::EncryptionHandler,
     event::{NostrEvent, NostrEventDetails},
-    model::{Payment, PaymentType},
+    model::{Payment, PaymentState, PaymentType},
+    nips::nip47::NostrWalletConnectHandler,
+    sdk_event::SdkEventListener,
 };
 
 pub(crate) struct NwcEventHandler {
@@ -192,5 +194,20 @@ impl NwcEventHandler {
                 event_id: Some(zap_request.id.to_string()),
             })
             .await;
+    }
+}
+
+#[sdk_macros::async_trait]
+impl SdkEventListener for NostrWalletConnectHandler {
+    async fn on_sdk_payment(&self, payment: &Payment) {
+        match payment.payment_state {
+            PaymentState::Pending => {
+                self.event_handler.handle_zap_receipt(payment).await;
+            }
+            PaymentState::Complete => {
+                self.event_handler.handle_notif_to_relay(payment).await;
+            }
+            _ => {}
+        }
     }
 }

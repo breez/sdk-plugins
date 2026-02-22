@@ -1,5 +1,6 @@
-use crate::NostrError;
 use nostr_sdk::nips::nip47::{ErrorCode, NIP47Error};
+
+use crate::error::NostrError;
 
 #[allow(clippy::from_over_into)]
 impl Into<NIP47Error> for NostrError {
