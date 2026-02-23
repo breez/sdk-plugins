@@ -1,6 +1,6 @@
 mod manager;
 mod persist;
-pub(crate) mod routines;
+mod routines;
 mod sdk_services;
 
 use std::sync::Arc;
@@ -25,7 +25,7 @@ pub(crate) struct ZapReceiptsHandler {
 }
 
 impl ZapReceiptsHandler {
-    pub(crate) fn new(ctx: Arc<RuntimeContext>) -> Self {
+    pub fn new(ctx: Arc<RuntimeContext>) -> Self {
         Self {
             ctx,
             event_handler: ZapEventHandler {},

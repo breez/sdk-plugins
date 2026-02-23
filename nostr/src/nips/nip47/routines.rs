@@ -1,26 +1,18 @@
 use std::{collections::BTreeSet, time::Duration};
 
 use super::{event::NwcEventKind, NostrWalletConnectHandler};
-use crate::{
-    event::{NostrEvent, NostrEventDetails},
-    handlers::routines::HandlerRoutines,
-};
+use crate::event::{NostrEvent, NostrEventDetails};
 use anyhow::Result;
 use nostr_sdk::{Alphabet, Event, Filter, Kind, SingleLetterTag};
 use tokio::time::Interval;
 
-#[sdk_macros::async_trait]
-impl HandlerRoutines for NostrWalletConnectHandler {
-    async fn on_init(&self) -> Result<()> {
-        Ok(())
-    }
-
-    async fn on_connect(&self) -> Result<()> {
+impl NostrWalletConnectHandler {
+    pub async fn on_connect(&self) -> Result<()> {
         self.send_info_event().await?;
         Ok(())
     }
 
-    async fn on_interval(&self) -> Result<()> {
+    pub async fn on_interval(&self) -> Result<()> {
         let result = self.ctx.persister.refresh_connections()?;
         for connection_name in result.deleted {
             self.ctx
@@ -49,7 +41,7 @@ impl HandlerRoutines for NostrWalletConnectHandler {
         Ok(())
     }
 
-    async fn on_relay_event(&self, event: &Event) -> Result<()> {
+    pub async fn on_relay_event(&self, event: &Event) -> Result<()> {
         if self.active_connections.read().await.is_empty() {
             return Ok(());
         }
@@ -57,7 +49,7 @@ impl HandlerRoutines for NostrWalletConnectHandler {
         Ok(())
     }
 
-    async fn on_resubscribe(&self, maybe_expiry_interval: &mut Option<Interval>) -> Result<()> {
+    pub async fn on_resubscribe(&self, maybe_expiry_interval: &mut Option<Interval>) -> Result<()> {
         *maybe_expiry_interval = self
             .ctx
             .persister
@@ -73,11 +65,7 @@ impl HandlerRoutines for NostrWalletConnectHandler {
         Ok(())
     }
 
-    async fn on_destroy(&self) -> Result<()> {
-        Ok(())
-    }
-
-    fn set_filters(&self, filter: &mut Filter) {
+    pub fn set_filters(&self, filter: &mut Filter) {
         filter.generic_tags.insert(
             SingleLetterTag {
                 character: Alphabet::P,

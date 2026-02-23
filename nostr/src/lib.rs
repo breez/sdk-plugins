@@ -4,7 +4,7 @@ use crate::{
     context::{ContextAction, RuntimeContext},
     error::{NostrError, NostrResult},
     event::{EventManager, NostrEventListener},
-    handlers::{builder::NostrHandlersBuilder, routines::HandlerRoutines, NostrHandlers},
+    handlers::{builder::NostrHandlersBuilder, NostrHandlers},
     model::{NostrConfig, NostrManagerInfo},
 };
 use breez_plugins::{Plugin, PluginStorage};
@@ -232,9 +232,6 @@ impl<SdkServices: NostrSdkServices + 'static> Plugin<SdkServices> for NostrManag
                 return;
             };
             runtime.ctx.clear().await;
-            if let Err(err) = runtime.handlers.on_destroy().await {
-                warn!("Could not execute `on_destroy` routine: {err}");
-            };
             *runtime_lock = None;
         }
     }
