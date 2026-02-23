@@ -15,7 +15,7 @@ use crate::{
     encrypt::EncryptionHandler,
     model::{Payment, PaymentState, PaymentType},
     nips::nip47::NostrWalletConnectHandler,
-    sdk_event::{NotificationKind, SdkEventListener},
+    sdk_services::{NotificationKind, SdkEventListener},
 };
 
 pub(crate) struct NwcEventHandler {

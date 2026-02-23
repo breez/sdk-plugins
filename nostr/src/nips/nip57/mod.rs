@@ -1,11 +1,13 @@
 mod manager;
 mod persist;
 pub(crate) mod routines;
-mod sdk_event;
+mod sdk_services;
 
 use std::sync::Arc;
 
-use crate::{context::RuntimeContext, error::NostrResult, nips::nip57::sdk_event::ZapEventHandler};
+use crate::{
+    context::RuntimeContext, error::NostrResult, nips::nip57::sdk_services::ZapEventHandler,
+};
 
 use log::info;
 use nostr_sdk::Event;

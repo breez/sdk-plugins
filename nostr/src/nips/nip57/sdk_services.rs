@@ -2,7 +2,7 @@ use crate::{
     context::RuntimeContext,
     event::{NostrEvent, NostrEventDetails},
     model::{Payment, PaymentState},
-    sdk_event::SdkEventListener,
+    sdk_services::SdkEventListener,
 };
 use log::{info, warn};
 use nostr_sdk::{EventBuilder, Kind, Tag, TagKind, TagStandard, Timestamp};

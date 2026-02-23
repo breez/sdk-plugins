@@ -4,7 +4,7 @@ use super::NostrHandlers;
 use crate::{context::RuntimeContext, model::NostrConfig};
 
 #[cfg(feature = "nip47")]
-use crate::nips::nip47::{NostrWalletConnectHandler, RelayMessageHandler};
+use crate::{nips::nip47::NostrWalletConnectHandler, sdk_services::NostrSdkServices};
 
 #[cfg(feature = "nip57")]
 use crate::nips::nip57::ZapReceiptsHandler;
@@ -31,7 +31,7 @@ impl NostrHandlersBuilder {
     }
 
     #[cfg(feature = "nip47")]
-    pub(crate) fn nwc(&mut self, handler: Arc<dyn RelayMessageHandler>) {
+    pub(crate) fn nwc(&mut self, handler: Arc<dyn NostrSdkServices>) {
         let nwc_handler =
             NostrWalletConnectHandler::new(self.ctx.clone(), handler, self.config.clone());
         self.nwc = Some(nwc_handler);

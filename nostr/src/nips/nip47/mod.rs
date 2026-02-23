@@ -1,11 +1,10 @@
 mod error;
 pub mod event;
-pub mod handler;
 mod manager;
 pub mod model;
 mod persist;
 pub(crate) mod routines;
-mod sdk_event;
+mod sdk_services;
 
 use log::{debug, info, warn};
 use model::{
@@ -21,11 +20,11 @@ use crate::{
     error::{NostrError, NostrResult},
     event::{NostrEvent, NostrEventDetails},
     model::NostrConfig,
+    sdk_services::NostrSdkServices,
     utils,
 };
 use event::NwcEventKind;
-pub use handler::RelayMessageHandler;
-use sdk_event::NwcEventHandler;
+use sdk_services::NwcEventHandler;
 
 use nostr_sdk::{
     nips::nip47::{NostrWalletConnectURI, Request, RequestParams, Response, ResponseResult},
@@ -102,7 +101,7 @@ pub trait NostrWalletConnectService: Send + Sync {
 pub(crate) struct NostrWalletConnectHandler {
     pub config: NostrConfig,
     pub ctx: Arc<RuntimeContext>,
-    pub message_handler: Arc<dyn RelayMessageHandler>,
+    pub message_handler: Arc<dyn NostrSdkServices>,
     pub event_handler: NwcEventHandler,
     pub active_connections: Arc<RwLock<ActiveConnections>>,
 }
@@ -231,7 +230,7 @@ impl NostrWalletConnectService for NostrWalletConnectHandler {
 impl NostrWalletConnectHandler {
     pub fn new(
         ctx: Arc<RuntimeContext>,
-        message_handler: Arc<dyn RelayMessageHandler>,
+        message_handler: Arc<dyn NostrSdkServices>,
         config: NostrConfig,
     ) -> Self {
         let active_connections: Arc<RwLock<ActiveConnections>> = Default::default();

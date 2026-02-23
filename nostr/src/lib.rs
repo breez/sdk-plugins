@@ -6,7 +6,7 @@ use crate::{
     event::{EventManager, NostrEventListener},
     handlers::{builder::NostrHandlersBuilder, routines::HandlerRoutines, NostrHandlers},
     model::{NostrConfig, NostrManagerInfo},
-    sdk_event::EventEmitter,
+    sdk_services::NostrSdkServices,
 };
 use breez_sdk_plugins::{Plugin, PluginStorage};
 use log::{error, info, warn};
@@ -17,9 +17,6 @@ use tokio::{
 };
 use tokio_with_wasm::alias as tokio;
 
-#[cfg(feature = "nip47")]
-use nips::nip47::handler::RelayMessageHandler;
-
 pub(crate) mod context;
 mod encrypt;
 pub mod error;
@@ -28,7 +25,7 @@ pub mod handlers;
 pub mod model;
 pub mod nips;
 mod persist;
-pub mod sdk_event;
+pub mod sdk_services;
 pub(crate) mod utils;
 
 pub const DEFAULT_RELAY_URLS: [&str; 4] = [
@@ -48,11 +45,6 @@ pub struct NostrManager {
     event_manager: Arc<EventManager>,
     runtime: Mutex<Option<Runtime>>,
 }
-
-#[cfg(not(feature = "nip47"))]
-pub(crate) trait NostrSdkServices: EventEmitter + 'static {}
-#[cfg(feature = "nip47")]
-pub(crate) trait NostrSdkServices: EventEmitter + RelayMessageHandler + 'static {}
 
 impl NostrManager {
     /// Creates a new NostrManager instance.
@@ -130,7 +122,7 @@ impl NostrManager {
 }
 
 #[sdk_macros::async_trait]
-impl<SdkServices: NostrSdkServices> Plugin<SdkServices> for NostrManager {
+impl<SdkServices: NostrSdkServices + 'static> Plugin<SdkServices> for NostrManager {
     fn id(&self) -> String {
         "breez-nostr".to_string()
     }

@@ -8,7 +8,7 @@ use crate::{
     event::{NostrEvent, NostrEventDetails},
     handlers::routines::HandlerRoutines,
     model::Payment,
-    sdk_event::SdkEventListener,
+    sdk_services::SdkEventListener,
 };
 use anyhow::Result;
 use log::info;

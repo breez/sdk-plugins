@@ -3,7 +3,7 @@ use anyhow::Result;
 use nostr_sdk::{Event, Filter};
 use tokio::time::Interval;
 
-use crate::sdk_event::SdkEventListener;
+use crate::sdk_services::SdkEventListener;
 
 #[sdk_macros::async_trait]
 pub trait HandlerRoutines: SdkEventListener + Send + Sync {
