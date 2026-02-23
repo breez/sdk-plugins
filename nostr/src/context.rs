@@ -8,7 +8,7 @@ use crate::{
     NostrSdkServices,
 };
 use anyhow::{bail, Result};
-use breez_sdk_plugins::PluginStorage;
+use breez_plugins::PluginStorage;
 use log::{info, warn};
 use nostr_sdk::{Client as NostrClient, EventBuilder, Keys};
 use tokio::sync::{mpsc, Mutex, OnceCell};

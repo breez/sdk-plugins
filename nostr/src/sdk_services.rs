@@ -13,7 +13,7 @@ pub(crate) enum NotificationKind {
 }
 
 #[sdk_macros::async_trait]
-pub trait SdkEventListener {
+pub trait SdkEventListener: Send + Sync {
     async fn on_sdk_payment(&self, payment: &crate::model::Payment);
 }
 

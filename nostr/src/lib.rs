@@ -6,11 +6,11 @@ use crate::{
     event::{EventManager, NostrEventListener},
     handlers::{builder::NostrHandlersBuilder, routines::HandlerRoutines, NostrHandlers},
     model::{NostrConfig, NostrManagerInfo},
-    sdk_services::NostrSdkServices,
 };
-use breez_sdk_plugins::{Plugin, PluginStorage};
+use breez_plugins::{Plugin, PluginStorage};
 use log::{error, info, warn};
 use nostr_sdk::{RelayMessage, RelayPoolNotification};
+pub use sdk_services::NostrSdkServices;
 use tokio::{
     sync::{mpsc, Mutex},
     time::Interval,

@@ -1,6 +1,6 @@
 use std::string::FromUtf8Error;
 
-use breez_sdk_plugins::PluginStorageError;
+use breez_plugins::PluginStorageError;
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum NostrError {

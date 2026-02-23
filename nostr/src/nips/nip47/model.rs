@@ -1,5 +1,7 @@
-use nostr_sdk::{nips::nip47::NostrWalletConnectURI, PublicKey};
+use nostr_sdk::PublicKey;
 use serde::{Deserialize, Serialize};
+
+pub use nostr_sdk::nips::nip47::*;
 
 use crate::utils;
 

@@ -1,4 +1,4 @@
-use breez_sdk_plugins::{PluginStorage, PluginStorageError};
+use breez_plugins::{PluginStorage, PluginStorageError};
 use serde::Serialize;
 
 use crate::error::{NostrError, NostrResult};

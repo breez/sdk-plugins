@@ -388,12 +388,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "breez-sdk-nostr"
+name = "breez-nostr"
 version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
- "breez-sdk-plugins",
+ "breez-plugins",
  "log",
  "nostr-sdk 0.43.0",
  "once_cell",
@@ -410,7 +410,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "breez-sdk-plugins"
+name = "breez-plugins"
 version = "0.0.1"
 dependencies = [
  "aes",
@@ -2284,9 +2284,9 @@ checksum = "a96887878f22d7bad8a3b6dc5b7440e0ada9a245242924394987b21cf2210a4c"
 
 [[package]]
 name = "reqwest"
-version = "0.12.18"
+version = "0.12.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e98ff6b0dbbe4d5a37318f433d4fc82babd21631f194d370409ceb2e40b2f0b5"
+checksum = "eddd3ca559203180a307f12d114c268abf583f59b03cb906fd0b3ff8646c1147"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -2300,12 +2300,10 @@ dependencies = [
  "hyper-rustls",
  "hyper-tls",
  "hyper-util",
- "ipnet",
  "js-sys",
  "log",
  "mime",
  "native-tls",
- "once_cell",
  "percent-encoding",
  "pin-project-lite",
  "rustls-pki-types",
@@ -2519,7 +2517,7 @@ dependencies = [
 [[package]]
 name = "sdk-common"
 version = "0.7.1"
-source = "git+https://github.com/breez/breez-sdk?rev=113749fd36dd7a20358dc40526c4a30147f8c1a8#113749fd36dd7a20358dc40526c4a30147f8c1a8"
+source = "git+https://github.com/breez/breez-sdk?rev=6ad80932b9949fdbfb60d85c6c7e41c117081472#6ad80932b9949fdbfb60d85c6c7e41c117081472"
 dependencies = [
  "aes",
  "anyhow",
@@ -2564,7 +2562,7 @@ dependencies = [
 [[package]]
 name = "sdk-macros"
 version = "0.7.1"
-source = "git+https://github.com/breez/breez-sdk?rev=113749fd36dd7a20358dc40526c4a30147f8c1a8#113749fd36dd7a20358dc40526c4a30147f8c1a8"
+source = "git+https://github.com/breez/breez-sdk?rev=6ad80932b9949fdbfb60d85c6c7e41c117081472#6ad80932b9949fdbfb60d85c6c7e41c117081472"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3089,9 +3087,9 @@ dependencies = [
 
 [[package]]
 name = "tokio_with_wasm"
-version = "0.8.2"
+version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e42d20f41cbfe26740d0c2fb320d44ce7dfa716be135cb663e99a48248a0e897"
+checksum = "34e40fbbbd95441133fe9483f522db15dbfd26dc636164ebd8f2dd28759a6aa6"
 dependencies = [
  "js-sys",
  "tokio",

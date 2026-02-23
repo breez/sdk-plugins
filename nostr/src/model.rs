@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::DEFAULT_RELAY_URLS;
+pub use nostr_sdk::Timestamp;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct NostrConfig {
