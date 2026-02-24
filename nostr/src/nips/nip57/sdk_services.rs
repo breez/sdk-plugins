@@ -1,12 +1,11 @@
 use crate::{
     context::RuntimeContext,
     event::{NostrEvent, NostrEventDetails},
-    model::{Payment, PaymentState},
+    model::{LightningInvoice, Payment, PaymentState},
     sdk_services::SdkEventListener,
 };
 use log::{info, warn};
 use nostr_sdk::{EventBuilder, Kind, Tag, TagKind, TagStandard};
-use sdk_common::prelude::{parse, InputType};
 
 use super::ZapReceiptsHandler;
 
@@ -24,7 +23,7 @@ impl ZapEventHandler {
 
         info!("Constructing zap receipt for invoice {invoice}");
 
-        let Ok(InputType::Bolt11 { invoice }) = parse(invoice, None).await else {
+        let Ok(LightningInvoice { bolt11, .. }) = ctx.sdk.parse_invoice(invoice).await else {
             warn!("Could not parse bolt11 invoice for tracked zap");
             return;
         };
@@ -59,7 +58,7 @@ impl ZapEventHandler {
         );
 
         // Insert bolt11 tag
-        eb = eb.tag(TagStandard::Bolt11(invoice.bolt11.clone()).into());
+        eb = eb.tag(TagStandard::Bolt11(bolt11.clone()).into());
         // Insert description tag
         let Ok(zap_request_json) = serde_json::to_string(&zap_request) else {
             warn!("Could not encode zap request in JSON");
@@ -78,18 +77,13 @@ impl ZapEventHandler {
             warn!("Could not broadcast zap receipt: {err}");
             return;
         }
-        info!(
-            "Successfully sent zap receipt for invoice {}",
-            invoice.bolt11
-        );
-        if let Err(err) = ctx.persister.remove_tracked_zap(&invoice.bolt11) {
+        info!("Successfully sent zap receipt for invoice {}", bolt11);
+        if let Err(err) = ctx.persister.remove_tracked_zap(&bolt11) {
             warn!("Could not remove tracked zap: {err}");
         };
         ctx.event_manager
             .notify(NostrEvent {
-                details: NostrEventDetails::ZapReceived {
-                    invoice: invoice.bolt11,
-                },
+                details: NostrEventDetails::ZapReceived { invoice: bolt11 },
                 event_id: Some(zap_request.id.to_string()),
             })
             .await;

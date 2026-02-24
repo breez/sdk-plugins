@@ -8,7 +8,6 @@ workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
-sdk-common = { workspace = true }
 sdk-macros = { workspace = true }
 async-trait = { workspace = true }
 thiserror = { workspace = true }

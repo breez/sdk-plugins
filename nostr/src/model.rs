@@ -53,3 +53,10 @@ pub struct Payment {
     pub description: Option<String>,
     pub description_hash: Option<String>,
 }
+
+pub struct LightningInvoice {
+    pub bolt11: String,
+    pub payment_hash: String,
+    pub description: Option<String>,
+    pub amount_msat: Option<u64>,
+}

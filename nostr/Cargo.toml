@@ -8,7 +8,6 @@ workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
-sdk-common = { workspace = true }
 sdk-macros = { workspace = true }
 async-trait = { workspace = true }
 thiserror = { workspace = true }
@@ -37,5 +36,6 @@ uuid = { version = "1.8.0", features = ["v4"] }
 uuid = { version = "1.8.0", features = ["v4", "js"] }
 
 [features]
+default = ["nip47", "nip57"]
 nip47 = ["nostr-sdk/nip47"]
 nip57 = []

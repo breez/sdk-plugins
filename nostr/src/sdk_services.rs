@@ -1,3 +1,4 @@
+use crate::model::LightningInvoice;
 #[cfg(feature = "nip47")]
 use {
     crate::error::NostrResult,
@@ -39,6 +40,10 @@ pub trait NostrSdkServices: Send + Sync {
 
     #[cfg(feature = "nip47")]
     async fn get_info(&self) -> NostrResult<GetInfoResponse>;
+
+    #[cfg(feature = "nip47")]
+    #[cfg(feature = "nip57")]
+    async fn parse_invoice(&self, invoice: &str) -> NostrResult<LightningInvoice>;
 
     async fn add_event_listener(&self, listener: Box<dyn SdkEventListener>) -> String;
 

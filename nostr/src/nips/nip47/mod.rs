@@ -19,7 +19,7 @@ use crate::{
     encrypt::EncryptionHandler,
     error::{NostrError, NostrResult},
     event::{NostrEvent, NostrEventDetails},
-    model::NostrConfig,
+    model::{LightningInvoice, NostrConfig},
     sdk_services::NostrSdkServices,
     utils,
 };
@@ -30,7 +30,6 @@ use nostr_sdk::{
     nips::nip47::{NostrWalletConnectURI, Request, RequestParams, Response, ResponseResult},
     Event, EventBuilder, EventId, Filter, Keys, Kind, RelayUrl, Tag, Timestamp,
 };
-use sdk_common::input_parser::InputType;
 
 pub const MIN_REFRESH_INTERVAL_SEC: u64 = 60; // 1 minute
 pub const DEFAULT_PERIODIC_BUDGET_TIME_SEC: u32 = 60 * 60 * 24 * 30; // 30 days
@@ -340,8 +339,11 @@ impl NostrWalletConnectHandler {
 
             match &req.params {
                 RequestParams::PayInvoice(req) => {
-                    let Ok(InputType::Bolt11 { invoice }) =
-                        sdk_common::input_parser::parse(&req.invoice, None).await
+                    let Ok(LightningInvoice {
+                        bolt11,
+                        amount_msat,
+                        ..
+                    }) = self.ctx.sdk.parse_invoice(&req.invoice).await
                     else {
                         return Err(NostrError::generic(format!(
                             "Could not parse pay_invoice invoice: {}",
@@ -350,7 +352,7 @@ impl NostrWalletConnectHandler {
                     };
                     let Some(req_amount_sat) = req
                         .amount
-                        .or(invoice.amount_msat)
+                        .or(amount_msat)
                         .map(|amount| amount.div_ceil(1000))
                     else {
                         return Err(NostrError::InvoiceWithoutAmount);
@@ -378,7 +380,7 @@ impl NostrWalletConnectHandler {
                         Ok(res) => {
                             self.ctx
                                 .persister
-                                .add_nwc_paid_invoice(&connection_name, invoice.bolt11)
+                                .add_nwc_paid_invoice(&connection_name, bolt11)
                                 .map_err(|err| {
                                     NostrError::persist(format!(
                                         "Could not persist paid invoice: {err}"
