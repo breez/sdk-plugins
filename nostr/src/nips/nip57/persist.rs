@@ -38,6 +38,15 @@ impl Persister {
         })
     }
 
+    pub(crate) fn get_tracked_zap(&self, invoice: &str) -> NostrResult<Option<nostr_sdk::Event>> {
+        self.set_tracked_zaps_safe(|tracked_zaps| {
+            let tracked_zap = tracked_zaps.get(invoice).cloned();
+            let zap_request =
+                tracked_zap.and_then(|zap| serde_json::from_str(&zap.zap_request).ok());
+            Ok((false, zap_request))
+        })
+    }
+
     pub(crate) fn remove_tracked_zap(
         &self,
         invoice: &str,

@@ -18,7 +18,7 @@ impl ZapEventHandler {
             invoice, preimage, ..
         } = payment;
 
-        let Ok(Some(zap_request)) = ctx.persister.remove_tracked_zap(invoice) else {
+        let Ok(Some(zap_request)) = ctx.persister.get_tracked_zap(invoice) else {
             return;
         };
 
@@ -82,6 +82,9 @@ impl ZapEventHandler {
             "Successfully sent zap receipt for invoice {}",
             invoice.bolt11
         );
+        if let Err(err) = ctx.persister.remove_tracked_zap(&invoice.bolt11) {
+            warn!("Could not remove tracked zap: {err}");
+        };
         ctx.event_manager
             .notify(NostrEvent {
                 details: NostrEventDetails::ZapReceived {
