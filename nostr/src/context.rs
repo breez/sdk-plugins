@@ -9,7 +9,7 @@ use crate::{
 };
 use anyhow::{bail, Result};
 use breez_plugins::PluginStorage;
-use log::{info, warn};
+use log::{debug, warn};
 use nostr_sdk::{Client as NostrClient, EventBuilder, Keys};
 use tokio::sync::{mpsc, Mutex, OnceCell};
 use tokio_with_wasm::alias as tokio;
@@ -105,7 +105,7 @@ impl RuntimeContext {
 
     pub async fn send_event(&self, event_builder: EventBuilder) -> Result<()> {
         let event = event_builder.sign_with_keys(&self.our_keys)?;
-        info!("Broadcasting Nostr event: {event:?}");
+        debug!("Broadcasting Nostr event: {event:?}");
         self.client.send_event(&event).await?;
         Ok(())
     }

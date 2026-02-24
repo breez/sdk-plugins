@@ -5,7 +5,7 @@ use crate::{
     sdk_services::SdkEventListener,
 };
 use log::{info, warn};
-use nostr_sdk::{EventBuilder, Kind, Tag, TagKind, TagStandard, Timestamp};
+use nostr_sdk::{EventBuilder, Kind, Tag, TagKind, TagStandard};
 use sdk_common::prelude::{parse, InputType};
 
 use super::ZapReceiptsHandler;
@@ -29,8 +29,7 @@ impl ZapEventHandler {
             return;
         };
 
-        let mut eb = EventBuilder::new(Kind::ZapReceipt, "")
-            .custom_created_at(Timestamp::from_secs(invoice.timestamp));
+        let mut eb = EventBuilder::new(Kind::ZapReceipt, "");
 
         // Verify zap_request
         // https://github.com/nostr-protocol/nips/blob/master/57.md#appendix-e-zap-receipt-event
@@ -76,7 +75,7 @@ impl ZapEventHandler {
 
         // Send event
         if let Err(err) = ctx.send_event(eb).await {
-            warn!("Coult not broadcast zap receipt: {err}");
+            warn!("Could not broadcast zap receipt: {err}");
             return;
         }
         info!(

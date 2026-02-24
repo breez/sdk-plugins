@@ -53,6 +53,7 @@ impl Persister {
                     Err(err) => return Err(err.into()),
                 }
             }
+            return Ok(result);
         }
         Err(NostrError::persist("Maximum write attempts reached"))
     }
