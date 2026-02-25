@@ -13,10 +13,10 @@ impl Persister {
     where
         F: Fn(&mut TrackedZaps) -> NostrResult<(bool, R)>,
     {
-        self.set_storage_safe(KEY_TRACKED_ZAPS, Self::list_tracked_zaps_raw, f)
+        self.set_storage_safe(KEY_TRACKED_ZAPS, Self::list_tracked_zaps, f)
     }
 
-    pub(crate) fn list_tracked_zaps_raw(&self) -> NostrResult<TrackedZaps> {
+    pub(crate) fn list_tracked_zaps(&self) -> NostrResult<TrackedZaps> {
         let tracked_zaps = self
             .storage
             .get_item(KEY_TRACKED_ZAPS)?
