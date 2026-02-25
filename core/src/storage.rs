@@ -27,15 +27,17 @@ impl From<aes_gcm::Error> for PluginStorageError {
 
 type StorageResult<T> = Result<T, PluginStorageError>;
 
-pub trait Transaction {
+pub trait DbExecutor {
     fn get_item(&self, key: &str) -> StorageResult<Option<String>>;
     fn set_item(&self, key: String, value: String) -> StorageResult<()>;
     fn remove_item(&self, key: &str) -> StorageResult<()>;
-    fn commit(self: Box<Self>) -> StorageResult<()>;
 }
 
 pub trait PluginStorageController: Send + Sync {
-    fn begin_tx(&self) -> Box<dyn Transaction>;
+    fn run_transaction(
+        &self,
+        f: &dyn FnOnce(&dyn DbExecutor) -> StorageResult<()>,
+    ) -> StorageResult<()>;
 }
 
 pub struct PluginStorage {
@@ -112,27 +114,28 @@ impl PluginStorage {
         value: String,
         old_value: Option<String>,
     ) -> StorageResult<()> {
-        let tx = self.controller.begin_tx();
         let scoped_key = self.scoped_key(key);
-        if let Some(old_value) = old_value {
-            if let Some(current_value) = tx.get_item(&scoped_key)? {
-                let current_value = self.decrypt(current_value)?;
-                if old_value != current_value {
-                    return Err(PluginStorageError::DataTooOld);
+        self.controller.run_transaction(&|tx: &dyn DbExecutor| {
+            if let Some(old_value) = old_value {
+                if let Some(current_value) = tx.get_item(&scoped_key)? {
+                    let current_value = self.decrypt(current_value)?;
+                    if old_value != current_value {
+                        return Err(PluginStorageError::DataTooOld);
+                    }
                 }
             }
-        }
-
-        tx.set_item(scoped_key, self.encrypt(value)?)?;
-        tx.commit()?;
-        Ok(())
+            tx.set_item(scoped_key, self.encrypt(value)?)?;
+            Ok(())
+        })
     }
 
     pub fn get_item(&self, key: &str) -> StorageResult<Option<String>> {
         let scoped_key = self.scoped_key(key);
-        let tx = self.controller.begin_tx();
-        let value = tx.get_item(&scoped_key)?;
-        tx.commit()?;
+        let mut value = None;
+        self.controller.run_transaction(&|tx: &dyn DbExecutor| {
+            value = tx.get_item(&scoped_key)?;
+            Ok(())
+        })?;
         if let Some(value) = value {
             return Ok(Some(self.decrypt(value)?));
         }
@@ -141,9 +144,7 @@ impl PluginStorage {
 
     pub fn remove_item(&self, key: &str) -> StorageResult<()> {
         let scoped_key = self.scoped_key(key);
-        let tx = self.controller.begin_tx();
-        tx.remove_item(&scoped_key)?;
-        tx.commit()?;
-        Ok(())
+        self.controller
+            .run_transaction(&|tx: &dyn DbExecutor| tx.remove_item(&scoped_key))
     }
 }
