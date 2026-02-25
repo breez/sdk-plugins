@@ -390,8 +390,8 @@ impl NostrWalletConnectHandler {
                         }
                         Err(e) => {
                             // In case of payment failure, we want to undo the periodic budget changes
-                            if client.connection.periodic_budget.is_some() {
-                                if let Err(err) = self
+                            if client.connection.periodic_budget.is_some()
+                                && let Err(err) = self
                                     .ctx
                                     .persister
                                     .update_budget(&connection_name, -(req_amount_sat as i64))
@@ -400,7 +400,6 @@ impl NostrWalletConnectHandler {
                                     "Cannot pay invoice: could not update periodic budget on connection \"{connection_name}\": {err}."
                                 )));
                                 }
-                            }
                             Err(e)
                         }
                     }

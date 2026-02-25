@@ -3,8 +3,8 @@ use crate::persist::Persister;
 use std::collections::{BTreeMap, BTreeSet};
 
 use super::{
-    model::{EditConnectionRequest, NwcConnectionInner, PeriodicBudgetInner, RefreshResult},
     MIN_REFRESH_INTERVAL_SEC,
+    model::{EditConnectionRequest, NwcConnectionInner, PeriodicBudgetInner, RefreshResult},
 };
 use crate::{
     error::{NostrError, NostrResult},
@@ -55,7 +55,7 @@ impl Persister {
             };
             connection.paid_amount_sat =
                 connection.paid_amount_sat.saturating_add_signed(delta_sat);
-            if let Some(ref mut periodic_budget) = &mut connection.periodic_budget {
+            if let Some(periodic_budget) = &mut connection.periodic_budget {
                 periodic_budget.used_budget_sat = periodic_budget
                     .used_budget_sat
                     .saturating_add_signed(delta_sat);
@@ -111,18 +111,15 @@ impl Persister {
             }
             let mut min_interval = None;
             for connection in connections.into_values() {
-                if let Some(expiry_time_sec) = connection.expiry_time_sec {
-                    if expiry_time_sec < min_interval.unwrap_or(u32::MAX) {
+                if let Some(expiry_time_sec) = connection.expiry_time_sec
+                    && expiry_time_sec < min_interval.unwrap_or(u32::MAX) {
                         min_interval = Some(expiry_time_sec);
                     }
-                }
                 if let Some(renewal_time_sec) =
                     connection.periodic_budget.and_then(|b| b.renewal_time_sec)
-                {
-                    if renewal_time_sec < min_interval.unwrap_or(u32::MAX) {
+                    && renewal_time_sec < min_interval.unwrap_or(u32::MAX) {
                         min_interval = Some(renewal_time_sec);
                     }
-                }
             }
             Ok(min_interval.map(u64::from))
         };
@@ -149,22 +146,19 @@ impl Persister {
             let mut result = RefreshResult::default();
             for (name, connection) in connections.iter_mut() {
                 // If the connection has expired, mark it for deletion
-                if let Some(expiry) = connection.expiry_time_sec {
-                    if now >= connection.created_at + expiry {
+                if let Some(expiry) = connection.expiry_time_sec
+                    && now >= connection.created_at + expiry {
                         result.deleted.push(name.clone());
                         continue;
                     }
-                }
                 // If the connection's periodic budget has to be updated
-                if let Some(ref mut budget) = connection.periodic_budget {
-                    if let Some(renewal_time_sec) = budget.renewal_time_sec {
-                        if now >= budget.updated_at + renewal_time_sec {
+                if let Some(ref mut budget) = connection.periodic_budget
+                    && let Some(renewal_time_sec) = budget.renewal_time_sec
+                        && now >= budget.updated_at + renewal_time_sec {
                             budget.used_budget_sat = 0;
                             budget.updated_at = now;
                             result.refreshed.push(name.clone());
                         }
-                    }
-                }
             }
             for name in &result.deleted {
                 connections.remove(name);

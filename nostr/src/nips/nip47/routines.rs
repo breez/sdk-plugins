@@ -1,6 +1,6 @@
 use std::{collections::BTreeSet, time::Duration};
 
-use super::{event::NwcEventKind, NostrWalletConnectHandler};
+use super::{NostrWalletConnectHandler, event::NwcEventKind};
 use crate::event::{NostrEvent, NostrEventDetails};
 use anyhow::Result;
 use nostr_sdk::{Alphabet, Event, Filter, Kind, SingleLetterTag};
@@ -56,7 +56,7 @@ impl NostrWalletConnectHandler {
             .get_min_interval()
             .map(|interval| tokio::time::interval(Duration::from_secs(interval)));
 
-        if let Some(ref mut interval) = maybe_expiry_interval {
+        if let Some(interval) = maybe_expiry_interval {
             // First time ticks instantly
             interval.tick().await;
         }

@@ -109,13 +109,10 @@ impl NwcEventHandler {
 #[sdk_macros::async_trait]
 impl SdkEventListener for NostrWalletConnectHandler {
     async fn on_sdk_payment(&self, payment: &Payment) {
-        match payment.payment_state {
-            PaymentState::Complete => {
-                self.event_handler
-                    .handle_notif_to_relay(&self.ctx, payment)
-                    .await;
-            }
-            _ => {}
+        if payment.payment_state == PaymentState::Complete {
+            self.event_handler
+                .handle_notif_to_relay(&self.ctx, payment)
+                .await;
         }
     }
 }

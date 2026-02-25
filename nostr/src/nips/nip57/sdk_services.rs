@@ -93,13 +93,10 @@ impl ZapEventHandler {
 #[sdk_macros::async_trait]
 impl SdkEventListener for ZapReceiptsHandler {
     async fn on_sdk_payment(&self, payment: &Payment) {
-        match payment.payment_state {
-            PaymentState::Pending => {
-                self.event_handler
-                    .handle_zap_receipt(&self.ctx, payment)
-                    .await;
-            }
-            _ => {}
+        if payment.payment_state == PaymentState::Pending {
+            self.event_handler
+                .handle_zap_receipt(&self.ctx, payment)
+                .await;
         }
     }
 }
