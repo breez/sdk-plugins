@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use crate::{
     NostrSdkServices,
@@ -11,7 +11,7 @@ use anyhow::{Result, bail};
 use breez_plugins::PluginStorage;
 use log::{debug, warn};
 use nostr_sdk::{Client as NostrClient, EventBuilder, Keys};
-use tokio::sync::{Mutex, OnceCell, mpsc};
+use tokio::sync::{OnceCell, mpsc};
 use tokio_with_wasm::alias as tokio;
 
 pub(crate) enum ContextAction {
@@ -26,7 +26,6 @@ pub(crate) struct RuntimeContext {
     pub persister: Persister,
     pub event_manager: Arc<EventManager>,
     pub action_trigger: mpsc::Sender<ContextAction>,
-    pub replied_event_ids: Mutex<HashSet<String>>,
     pub sdk_listener_id: OnceCell<String>,
 }
 
@@ -53,7 +52,6 @@ impl RuntimeContext {
             persister,
             event_manager,
             action_trigger: action_tx,
-            replied_event_ids: Mutex::new(HashSet::new()),
             sdk_listener_id: OnceCell::new(),
         };
         Ok(ctx)
@@ -117,11 +115,6 @@ impl RuntimeContext {
         );
         self.client.send_event(&event).await?;
         Ok(())
-    }
-
-    /// Returns true when we have replied to the event, and false otherwise (and inserts it)
-    pub async fn check_replied_event(&self, event_id: String) -> bool {
-        !self.replied_event_ids.lock().await.insert(event_id)
     }
 
     pub async fn add_event_listener(&self, handlers: Arc<NostrHandlers>) -> Result<()> {

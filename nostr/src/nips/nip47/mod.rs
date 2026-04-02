@@ -241,10 +241,6 @@ impl NostrWalletConnectHandler {
         Ok(())
     }
 
-    pub async fn check_replied_event(&self, event_id: String) -> bool {
-        self.ctx.check_replied_event(event_id).await
-    }
-
     async fn handle_event_inner(&self, event: &Event) -> NostrResult<()> {
         let event_id = event.id.to_string();
         let client_pubkey = event.pubkey;
@@ -259,10 +255,6 @@ impl NostrWalletConnectHandler {
             .ok_or(NostrError::PubkeyNotFound {
                 pubkey: client_pubkey.to_string(),
             })?;
-        if self.check_replied_event(event_id.clone()).await {
-            info!("Event {event_id} has already been replied to. Skipping.");
-            return Ok(());
-        }
 
         // Verify the event has not expired
         if event
