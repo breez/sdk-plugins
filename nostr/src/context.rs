@@ -1,17 +1,17 @@
 use std::{collections::HashSet, sync::Arc};
 
 use crate::{
+    NostrSdkServices,
     event::{EventManager, NostrEvent, NostrEventDetails},
     handlers::NostrHandlers,
     model::NostrConfig,
     persist::Persister,
-    NostrSdkServices,
 };
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use breez_plugins::PluginStorage;
 use log::{debug, warn};
 use nostr_sdk::{Client as NostrClient, EventBuilder, Keys};
-use tokio::sync::{mpsc, Mutex, OnceCell};
+use tokio::sync::{Mutex, OnceCell, mpsc};
 use tokio_with_wasm::alias as tokio;
 
 pub(crate) enum ContextAction {
@@ -105,7 +105,16 @@ impl RuntimeContext {
 
     pub async fn send_event(&self, event_builder: EventBuilder) -> Result<()> {
         let event = event_builder.sign_with_keys(&self.our_keys)?;
-        debug!("Broadcasting Nostr event: {event:?}");
+        debug!(
+            "Broadcasting Nostr event: {} to {:?}",
+            serde_json::to_string(&event)?,
+            self.client
+                .relays()
+                .await
+                .keys()
+                .map(nostr_sdk::RelayUrl::to_string)
+                .collect::<Vec<String>>()
+        );
         self.client.send_event(&event).await?;
         Ok(())
     }

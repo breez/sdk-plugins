@@ -1,4 +1,4 @@
-use nostr_sdk::{nips::nip44::Version, Event, PublicKey, SecretKey, TagKind};
+use nostr_sdk::{Event, PublicKey, SecretKey, TagKind, nips::nip44::Version};
 
 use crate::error::NostrError;
 

@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
+use crate::NostrManager;
 use crate::error::NostrResult;
 use crate::nips::nip47::model::AddConnectionResponse;
-use crate::NostrManager;
 
+use super::NostrWalletConnectService;
 use super::model::{
     AddConnectionRequest, EditConnectionRequest, EditConnectionResponse, NwcConnection,
 };
-use super::NostrWalletConnectService;
 
 #[sdk_macros::async_trait]
 impl NostrWalletConnectService for NostrManager {

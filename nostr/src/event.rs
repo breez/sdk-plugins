@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use log::{debug, info};
 use std::sync::atomic::{AtomicBool, Ordering};
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 use uuid::Uuid;
 
 #[cfg(feature = "nip47")]

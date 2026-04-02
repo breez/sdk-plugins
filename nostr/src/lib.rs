@@ -4,7 +4,7 @@ use crate::{
     context::{ContextAction, RuntimeContext},
     error::{NostrError, NostrResult},
     event::{EventManager, NostrEventListener},
-    handlers::{builder::NostrHandlersBuilder, NostrHandlers},
+    handlers::{NostrHandlers, builder::NostrHandlersBuilder},
     model::{NostrConfig, NostrManagerInfo},
 };
 use breez_plugins::{Plugin, PluginStorage};
@@ -12,7 +12,7 @@ use log::{error, info, warn};
 use nostr_sdk::{RelayMessage, RelayPoolNotification};
 pub use sdk_services::NostrSdkServices;
 use tokio::{
-    sync::{mpsc, Mutex},
+    sync::{Mutex, mpsc},
     time::Interval,
 };
 use tokio_with_wasm::alias as tokio;

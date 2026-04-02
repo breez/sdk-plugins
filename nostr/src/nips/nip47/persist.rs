@@ -112,14 +112,16 @@ impl Persister {
             let mut min_interval = None;
             for connection in connections.into_values() {
                 if let Some(expiry_time_sec) = connection.expiry_time_sec
-                    && expiry_time_sec < min_interval.unwrap_or(u32::MAX) {
-                        min_interval = Some(expiry_time_sec);
-                    }
+                    && expiry_time_sec < min_interval.unwrap_or(u32::MAX)
+                {
+                    min_interval = Some(expiry_time_sec);
+                }
                 if let Some(renewal_time_sec) =
                     connection.periodic_budget.and_then(|b| b.renewal_time_sec)
-                    && renewal_time_sec < min_interval.unwrap_or(u32::MAX) {
-                        min_interval = Some(renewal_time_sec);
-                    }
+                    && renewal_time_sec < min_interval.unwrap_or(u32::MAX)
+                {
+                    min_interval = Some(renewal_time_sec);
+                }
             }
             Ok(min_interval.map(u64::from))
         };
@@ -147,18 +149,20 @@ impl Persister {
             for (name, connection) in connections.iter_mut() {
                 // If the connection has expired, mark it for deletion
                 if let Some(expiry) = connection.expiry_time_sec
-                    && now >= connection.created_at + expiry {
-                        result.deleted.push(name.clone());
-                        continue;
-                    }
+                    && now >= connection.created_at + expiry
+                {
+                    result.deleted.push(name.clone());
+                    continue;
+                }
                 // If the connection's periodic budget has to be updated
                 if let Some(ref mut budget) = connection.periodic_budget
                     && let Some(renewal_time_sec) = budget.renewal_time_sec
-                        && now >= budget.updated_at + renewal_time_sec {
-                            budget.used_budget_sat = 0;
-                            budget.updated_at = now;
-                            result.refreshed.push(name.clone());
-                        }
+                    && now >= budget.updated_at + renewal_time_sec
+                {
+                    budget.used_budget_sat = 0;
+                    budget.updated_at = now;
+                    result.refreshed.push(name.clone());
+                }
             }
             for name in &result.deleted {
                 connections.remove(name);
