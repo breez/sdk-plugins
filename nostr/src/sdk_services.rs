@@ -21,9 +21,6 @@ pub trait SdkEventListener: Send + Sync {
 #[sdk_macros::async_trait]
 pub trait NostrSdkServices: Send + Sync {
     #[cfg(feature = "nip47")]
-    fn supported_methods(&self) -> &[&'static str];
-
-    #[cfg(feature = "nip47")]
     async fn make_invoice(&self, req: &MakeInvoiceRequest) -> NostrResult<MakeInvoiceResponse>;
 
     #[cfg(feature = "nip47")]

@@ -27,13 +27,21 @@ use event::NwcEventKind;
 use sdk_services::NwcEventHandler;
 
 use nostr_sdk::{
-    nips::nip47::{NostrWalletConnectURI, Request, RequestParams, Response, ResponseResult},
     Event, EventBuilder, EventId, Filter, Keys, Kind, RelayUrl, Tag, Timestamp,
+    nips::nip47::{NostrWalletConnectURI, Request, RequestParams, Response, ResponseResult},
 };
 
 pub const MIN_REFRESH_INTERVAL_SEC: u64 = 60; // 1 minute
 pub const DEFAULT_PERIODIC_BUDGET_TIME_SEC: u32 = 60 * 60 * 24 * 30; // 30 days
 pub const DEFAULT_EVENT_HANDLING_INTERVAL_SEC: u64 = 10;
+pub const NWC_SUPPORTED_METHODS: [&str; 5] = [
+    "make_invoice",
+    "pay_invoice",
+    "list_transactions",
+    "get_balance",
+    "get_info",
+];
+pub const NWC_SUPPORTED_NOTIFICATIONS: [&str; 2] = ["payment_received", "payment_sent"];
 
 pub(crate) type ActiveConnections = HashMap<String, ActiveConnection>;
 
@@ -58,7 +66,7 @@ pub trait NostrWalletConnectService: Send + Sync {
     /// * `res` - The [AddConnectionResponse], including:
     ///     * `connection` - the generated NWC connection
     async fn add_connection(&self, req: AddConnectionRequest)
-        -> NostrResult<AddConnectionResponse>;
+    -> NostrResult<AddConnectionResponse>;
 
     /// Modifies a Nostr Wallet Connect connection for this service.
     ///
@@ -269,11 +277,7 @@ impl NostrWalletConnectHandler {
     }
 
     pub async fn send_info_event(&self) -> NostrResult<()> {
-        let content = self
-            .message_handler
-            .supported_methods()
-            .join(" ")
-            .to_string();
+        let content = NWC_SUPPORTED_METHODS.join(" ").to_string();
         self.ctx
             .send_event(
                 EventBuilder::new(Kind::WalletConnectInfo, content).tag(Tag::custom(
@@ -372,8 +376,8 @@ impl NostrWalletConnectHandler {
                             .update_budget(&connection_name, req_amount_sat as i64)
                         {
                             return Err(NostrError::generic(format!(
-                            "Cannot pay invoice: could not update periodic budget on connection \"{connection_name}\": {err}"
-                        )));
+                                "Cannot pay invoice: could not update periodic budget on connection \"{connection_name}\": {err}"
+                            )));
                         }
                     }
                     match self.message_handler.pay_invoice(req).await {
@@ -395,11 +399,11 @@ impl NostrWalletConnectHandler {
                                     .ctx
                                     .persister
                                     .update_budget(&connection_name, -(req_amount_sat as i64))
-                                {
-                                    return Err(NostrError::generic(format!(
+                            {
+                                return Err(NostrError::generic(format!(
                                     "Cannot pay invoice: could not update periodic budget on connection \"{connection_name}\": {err}."
                                 )));
-                                }
+                            }
                             Err(e)
                         }
                     }
@@ -419,11 +423,14 @@ impl NostrWalletConnectHandler {
                     .get_balance()
                     .await
                     .map(ResponseResult::GetBalance),
-                RequestParams::GetInfo => self
-                    .message_handler
-                    .get_info()
-                    .await
-                    .map(ResponseResult::GetInfo),
+                RequestParams::GetInfo => {
+                    let mut res = self.message_handler.get_info().await;
+                    if let Ok(res) = &mut res {
+                        res.methods = NWC_SUPPORTED_METHODS.map(String::from).to_vec();
+                        res.notifications = NWC_SUPPORTED_NOTIFICATIONS.map(String::from).to_vec();
+                    }
+                    res.map(ResponseResult::GetInfo)
+                }
                 _ => Err(NostrError::generic(format!(
                     "Received unhandled request: {req:?}"
                 ))),
