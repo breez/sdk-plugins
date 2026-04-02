@@ -16,7 +16,21 @@ pub(crate) mod model;
 
 #[sdk_macros::async_trait]
 pub trait ZapReceiptsService {
+    /// Tracks an incoming zap until the payment is complete, and broadcasts the associated
+    /// zap_receipt
+    ///
+    /// # Arguments
+    ///
+    /// * `invoice` - The invoice related to the zap request
+    /// * `zap_request` - the URL- and JSON-encoded zap request
     async fn track_zap(&self, invoice: String, zap_request: String) -> NostrResult<()>;
+
+    /// Whether or not an invoice was registered to track a zap
+    ///
+    /// # Arguments
+    ///
+    /// * `invoice` - The invoice related to the zap
+    async fn is_zap(&self, invoice: String) -> NostrResult<bool>;
 }
 
 pub(crate) struct ZapReceiptsHandler {
@@ -44,5 +58,9 @@ impl ZapReceiptsService for ZapReceiptsHandler {
             .add_tracked_zap(invoice.clone(), zap_request)?;
         info!("Successfully added zap tracking for invoice {invoice}");
         Ok(())
+    }
+
+    async fn is_zap(&self, invoice: String) -> NostrResult<bool> {
+        Ok(self.ctx.persister.get_tracked_zap(&invoice)?.is_some())
     }
 }
