@@ -22,9 +22,6 @@ pub enum NostrError {
     #[error("Could not encrypt/decrypt event: {err}")]
     Encryption { err: String },
 
-    #[error("Event not found")]
-    EventNotFound,
-
     #[error("Event has expired")]
     EventExpired,
 

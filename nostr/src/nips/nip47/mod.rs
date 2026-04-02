@@ -6,12 +6,12 @@ mod persist;
 pub(crate) mod routines;
 mod sdk_services;
 
-use log::{debug, info, warn};
+use log::{debug, info};
 use model::{
     ActiveConnection, AddConnectionRequest, AddConnectionResponse, EditConnectionRequest,
     EditConnectionResponse, NwcConnection, NwcConnectionInner, PeriodicBudgetInner,
 };
-use std::{collections::HashMap, str::FromStr as _, sync::Arc, time::Duration};
+use std::{collections::HashMap, str::FromStr as _, sync::Arc};
 use tokio::sync::RwLock;
 
 use crate::{
@@ -27,7 +27,7 @@ use event::NwcEventKind;
 use sdk_services::NwcEventHandler;
 
 use nostr_sdk::{
-    Event, EventBuilder, EventId, Filter, Keys, Kind, RelayUrl, Tag, Timestamp,
+    Event, EventBuilder, Keys, Kind, RelayUrl, Tag, Timestamp,
     nips::nip47::{NostrWalletConnectURI, Request, RequestParams, Response, ResponseResult},
 };
 
@@ -98,11 +98,11 @@ pub trait NostrWalletConnectService: Send + Sync {
     /// * `name` - The unique identifier for the connection string
     async fn remove_connection(&self, name: String) -> NostrResult<()>;
 
-    /// Fetches and handles a Nostr WalletRequest event
+    /// Handles a Nostr WalletRequest event
     ///
     /// # Arguments
-    /// * `id` - the ID of the Nostr event
-    async fn handle_event(&self, event_id: String) -> NostrResult<()>;
+    /// * `raw_event` - the raw, JSON-serialized Nostr event
+    async fn handle_event(&self, raw_event: String) -> NostrResult<()>;
 }
 
 pub(crate) struct NostrWalletConnectHandler {
@@ -178,58 +178,10 @@ impl NostrWalletConnectService for NostrWalletConnectHandler {
         Ok(())
     }
 
-    async fn handle_event(&self, event_id: String) -> NostrResult<()> {
-        let event_id = EventId::from_str(&event_id)?;
+    async fn handle_event(&self, raw_event: String) -> NostrResult<()> {
         self.ctx.client.connect().await;
-
-        // Retry fetching the event with exponential backoff
-        // Relays may take time to sync or connection may be slow
-        let mut retry_delay = Duration::from_secs(1);
-        let max_retries = 3;
-        let mut events = None;
-
-        for attempt in 0..max_retries {
-            match self
-                .ctx
-                .client
-                .fetch_events(Filter::new().id(event_id), Duration::from_secs(30))
-                .await
-            {
-                Ok(fetched) if !fetched.is_empty() => {
-                    events = Some(fetched);
-                    break;
-                }
-                Ok(_) => {
-                    warn!(
-                        "Event {} not found on attempt {}/{}",
-                        event_id,
-                        attempt + 1,
-                        max_retries
-                    );
-                }
-                Err(e) => {
-                    warn!(
-                        "Failed to fetch event {} on attempt {}/{}: {}",
-                        event_id,
-                        attempt + 1,
-                        max_retries,
-                        e
-                    );
-                }
-            }
-
-            if attempt < max_retries - 1 {
-                info!("Retrying event fetch in {:?}", retry_delay);
-                tokio::time::sleep(retry_delay).await;
-                retry_delay *= 2;
-            }
-        }
-
-        let Some(event) = events.as_ref().and_then(|e| e.first()) else {
-            return Err(NostrError::EventNotFound);
-        };
-
-        self.handle_event_inner(event).await?;
+        let event = serde_json::from_str(&raw_event)?;
+        self.handle_event_inner(&event).await?;
         Ok(())
     }
 }

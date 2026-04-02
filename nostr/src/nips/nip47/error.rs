@@ -6,7 +6,7 @@ use crate::error::NostrError;
 impl Into<NIP47Error> for NostrError {
     fn into(self) -> NIP47Error {
         let code = match &self {
-            Self::PubkeyNotFound { .. } | Self::EventNotFound => ErrorCode::NotFound,
+            Self::PubkeyNotFound { .. } => ErrorCode::NotFound,
             Self::MaxBudgetExceeded => ErrorCode::QuotaExceeded,
             _ => ErrorCode::PaymentFailed,
         };
