@@ -61,6 +61,6 @@ impl ZapReceiptsService for ZapReceiptsHandler {
     }
 
     async fn is_zap(&self, invoice: String) -> NostrResult<bool> {
-        Ok(self.ctx.persister.get_tracked_zap(&invoice)?.is_some())
+        Ok(self.ctx.persister.get_tracked_zap_raw(&invoice)?.is_some())
     }
 }

@@ -17,7 +17,12 @@ impl ZapEventHandler {
             invoice, preimage, ..
         } = payment;
 
-        let Ok(Some(zap_request)) = ctx.persister.get_tracked_zap(invoice) else {
+        let Ok(Some(zap_request_raw)) = ctx.persister.get_tracked_zap_raw(invoice) else {
+            return;
+        };
+
+        let Ok(zap_request) = serde_json::from_str::<'_, nostr_sdk::Event>(&zap_request_raw) else {
+            warn!("Could not deserialize zap request for invoice {invoice}. Aborting receipt.");
             return;
         };
 
@@ -59,12 +64,8 @@ impl ZapEventHandler {
 
         // Insert bolt11 tag
         eb = eb.tag(TagStandard::Bolt11(bolt11.clone()).into());
-        // Insert description tag
-        let Ok(zap_request_json) = serde_json::to_string(&zap_request) else {
-            warn!("Could not encode zap request in JSON");
-            return;
-        };
-        eb = eb.tag(TagStandard::Description(zap_request_json).into());
+        // Insert description tag with the original zap request JSON (not re-serialized)
+        eb = eb.tag(TagStandard::Description(zap_request_raw).into());
         // Insert preimage tag
         if let Some(preimage) = preimage {
             eb = eb.tag(Tag::from_standardized(TagStandard::Preimage(
@@ -72,7 +73,18 @@ impl ZapEventHandler {
             )));
         }
 
+        let relays = zap_request
+            .tags
+            .find(TagKind::Relays)
+            .map(|relays| relays.as_slice()[1..].to_vec());
+        if let Some(relays) = relays {
+            for relay_url in relays {
+                let _ = ctx.client.add_relay(relay_url).await;
+            }
+        }
+
         // Send event
+        ctx.client.connect().await;
         if let Err(err) = ctx.send_event(eb).await {
             warn!("Could not broadcast zap receipt: {err}");
             return;
