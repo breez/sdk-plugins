@@ -43,6 +43,9 @@ pub enum NostrError {
 
     #[error("Connection already exists")]
     ConnectionExists,
+
+    #[error("Payment is already in progress")]
+    PaymentInProgress,
 }
 
 impl NostrError {
