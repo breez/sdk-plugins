@@ -1,3 +1,4 @@
+#[cfg_attr(feature = "uniffi", derive(uniffi::Enum))]
 #[derive(Clone, Debug, PartialEq)]
 pub enum NwcEventKind {
     PayInvoice {

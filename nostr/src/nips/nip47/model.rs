@@ -30,6 +30,7 @@ impl PeriodicBudgetInner {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 pub struct PeriodicBudget {
     /// The amount of budget used (in satoshi) for the period
     /// Resets once every period ([PeriodicBudget::renews_at])
@@ -54,6 +55,7 @@ impl From<PeriodicBudgetInner> for PeriodicBudget {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 pub struct PeriodicBudgetRequest {
     /// See [PeriodicBudget::max_budget_sat]
     pub max_budget_sat: u64,
@@ -79,6 +81,7 @@ pub(crate) struct NwcConnectionInner {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 pub struct NwcConnection {
     /// The NWC uri for the connection
     pub connection_string: String,
@@ -108,6 +111,7 @@ impl From<NwcConnectionInner> for NwcConnection {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 pub struct AddConnectionRequest {
     /// The **unique** name for the new connection
     pub name: String,
@@ -119,11 +123,13 @@ pub struct AddConnectionRequest {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 pub struct AddConnectionResponse {
     pub connection: NwcConnection,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 pub struct EditConnectionRequest {
     /// The **unique** name for the new connection
     pub name: String,
@@ -139,6 +145,7 @@ pub struct EditConnectionRequest {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 pub struct EditConnectionResponse {
     pub connection: NwcConnection,
 }

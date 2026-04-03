@@ -3,6 +3,7 @@ use std::string::FromUtf8Error;
 use breez_plugins::PluginStorageError;
 
 #[derive(thiserror::Error, Debug, Clone)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Error))]
 pub enum NostrError {
     #[error("Generic error: {err}")]
     Generic { err: String },

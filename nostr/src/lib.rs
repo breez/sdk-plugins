@@ -40,12 +40,14 @@ struct Runtime {
     handlers: Arc<NostrHandlers>,
 }
 
+#[cfg_attr(feature = "uniffi", derive(uniffi::Object))]
 pub struct NostrPlugin {
     config: NostrConfig,
     event_manager: Arc<EventManager>,
     runtime: Mutex<Option<Runtime>>,
 }
 
+#[cfg_attr(feature = "uniffi", uniffi::export(async_runtime = "tokio"))]
 impl NostrPlugin {
     /// Creates a new NostrManager instance.
     ///
@@ -56,6 +58,7 @@ impl NostrPlugin {
     ///
     /// # Returns
     /// * `NostrManager` - Successfully initialized service
+    #[cfg_attr(feature = "uniffi", uniffi::constructor)]
     pub fn new(config: NostrConfig) -> Self {
         Self {
             config,
@@ -81,7 +84,7 @@ impl NostrPlugin {
         })
     }
 
-    pub async fn on_stop(&self) {
+    pub async fn stop(&self) {
         info!("Shutting down Nostr plugin");
         let mut runtime_lock = self.runtime.lock().await;
         if let Some(ref runtime) = *runtime_lock {
@@ -232,3 +235,6 @@ impl<SdkServices: NostrSdkServices + 'static> Plugin<SdkServices> for NostrPlugi
         });
     }
 }
+
+#[cfg(feature = "uniffi")]
+uniffi::setup_scaffolding!();

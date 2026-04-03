@@ -4,6 +4,7 @@ use crate::DEFAULT_RELAY_URLS;
 pub use nostr_sdk::Timestamp;
 
 #[derive(Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 pub struct NostrConfig {
     /// A list of default relay urls to add per connection
     pub relay_urls: Option<Vec<String>>,
@@ -23,24 +24,28 @@ impl NostrConfig {
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 pub struct NostrPluginInfo {
     pub wallet_pubkey: String,
     pub connected_relays: Vec<String>,
 }
 
 #[derive(PartialEq)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Enum))]
 pub enum PaymentType {
     Incoming,
     Outgoing,
 }
 
 #[derive(PartialEq)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Enum))]
 pub enum PaymentState {
     Pending,
     Failed,
     Complete,
 }
 
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 pub struct Payment {
     pub invoice: String,
     pub amount_sat: u64,
@@ -54,6 +59,7 @@ pub struct Payment {
     pub description_hash: Option<String>,
 }
 
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 pub struct LightningInvoice {
     pub bolt11: String,
     pub payment_hash: String,

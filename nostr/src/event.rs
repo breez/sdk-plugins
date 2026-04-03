@@ -8,6 +8,7 @@ use uuid::Uuid;
 #[cfg(feature = "nip47")]
 use crate::nips::nip47::event::NwcEventKind;
 
+#[cfg_attr(feature = "uniffi", derive(uniffi::Enum))]
 #[derive(Clone, Debug, PartialEq)]
 pub enum NostrEventDetails {
     Connected,
@@ -24,12 +25,14 @@ pub enum NostrEventDetails {
 }
 
 /// The event emitted when a Nostr operation has been handled
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 #[derive(Clone, Debug, PartialEq)]
 pub struct NostrEvent {
     pub event_id: Option<String>,
     pub details: NostrEventDetails,
 }
 
+#[cfg_attr(feature = "uniffi", uniffi::export(callback_interface))]
 #[sdk_macros::async_trait]
 pub trait NostrEventListener: Send + Sync {
     async fn on_event(&self, event: NostrEvent);
