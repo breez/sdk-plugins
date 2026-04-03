@@ -13,7 +13,7 @@ impl NostrWalletConnectHandler {
     }
 
     pub async fn on_interval(&self) -> Result<()> {
-        let result = self.ctx.persister.refresh_connections()?;
+        let result = self.ctx.persister.refresh_connections().await?;
         for connection_name in result.deleted {
             self.ctx
                 .event_manager
@@ -54,6 +54,7 @@ impl NostrWalletConnectHandler {
             .ctx
             .persister
             .get_min_interval()
+            .await
             .map(|interval| tokio::time::interval(Duration::from_secs(interval)));
 
         if let Some(interval) = maybe_expiry_interval {

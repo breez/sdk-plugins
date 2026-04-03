@@ -23,7 +23,7 @@ impl NostrConfig {
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub struct NostrManagerInfo {
+pub struct NostrPluginInfo {
     pub wallet_pubkey: String,
     pub connected_relays: Vec<String>,
 }

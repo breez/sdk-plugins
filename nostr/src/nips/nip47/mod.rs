@@ -1,6 +1,6 @@
 mod error;
 pub mod event;
-mod manager;
+mod forward;
 pub mod model;
 mod persist;
 pub(crate) mod routines;
@@ -146,7 +146,8 @@ impl NostrWalletConnectService for NostrWalletConnectHandler {
         };
         self.ctx
             .persister
-            .add_nwc_connection(req.name.clone(), connection.clone())?;
+            .add_nwc_connection(req.name.clone(), connection.clone())
+            .await?;
         self.ctx.trigger_resubscription().await;
         Ok(AddConnectionResponse {
             connection: connection.into(),
@@ -157,7 +158,7 @@ impl NostrWalletConnectService for NostrWalletConnectHandler {
         &self,
         req: EditConnectionRequest,
     ) -> NostrResult<EditConnectionResponse> {
-        let connection = self.ctx.persister.edit_nwc_connection(req)?;
+        let connection = self.ctx.persister.edit_nwc_connection(req).await?;
         self.ctx.trigger_resubscription().await;
         Ok(EditConnectionResponse {
             connection: connection.into(),
@@ -165,7 +166,7 @@ impl NostrWalletConnectService for NostrWalletConnectHandler {
     }
 
     async fn list_connections(&self) -> NostrResult<HashMap<String, NwcConnection>> {
-        let connections = self.ctx.persister.list_nwc_connections()?;
+        let connections = self.ctx.persister.list_nwc_connections().await?;
         Ok(connections
             .into_iter()
             .map(|(k, v)| (k, v.into()))
@@ -173,7 +174,7 @@ impl NostrWalletConnectService for NostrWalletConnectHandler {
     }
 
     async fn remove_connection(&self, name: String) -> NostrResult<()> {
-        self.ctx.persister.remove_nwc_connection(name)?;
+        self.ctx.persister.remove_nwc_connection(name).await?;
         self.ctx.trigger_resubscription().await;
         Ok(())
     }
@@ -209,7 +210,8 @@ impl NostrWalletConnectHandler {
         Ok(self
             .ctx
             .persister
-            .list_nwc_connections()?
+            .list_nwc_connections()
+            .await?
             .into_iter()
             .filter_map(|(name, connection)| {
                 NostrWalletConnectURI::from_str(&connection.connection_string)
@@ -318,6 +320,7 @@ impl NostrWalletConnectHandler {
                             .ctx
                             .persister
                             .update_budget(&connection_name, req_amount_sat as i64)
+                            .await
                         {
                             return Err(NostrError::generic(format!(
                                 "Cannot pay invoice: could not update periodic budget on connection \"{connection_name}\": {err}"
@@ -329,6 +332,7 @@ impl NostrWalletConnectHandler {
                             self.ctx
                                 .persister
                                 .add_nwc_paid_invoice(&connection_name, bolt11)
+                                .await
                                 .map_err(|err| {
                                     NostrError::persist(format!(
                                         "Could not persist paid invoice: {err}"
@@ -343,6 +347,7 @@ impl NostrWalletConnectHandler {
                                     .ctx
                                     .persister
                                     .update_budget(&connection_name, -(req_amount_sat as i64))
+                                    .await
                             {
                                 return Err(NostrError::generic(format!(
                                     "Cannot pay invoice: could not update periodic budget on connection \"{connection_name}\": {err}."

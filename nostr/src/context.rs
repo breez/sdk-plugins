@@ -68,13 +68,13 @@ impl RuntimeContext {
             }
 
             // Otherwise, try restoring it from the previous session
-            if let Ok(Some(key)) = persister.get_seckey() {
+            if let Ok(Some(key)) = persister.get_seckey().await {
                 return Ok(key);
             }
 
             // If none exists, generate a new one
             let key = nostr_sdk::key::SecretKey::generate().to_secret_hex();
-            persister.set_seckey(key.clone())?;
+            persister.set_seckey(key.clone()).await?;
             Ok(key)
         };
         let secret_key = get_secret_key().await?;

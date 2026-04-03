@@ -1,8 +1,8 @@
 use super::ZapReceiptsService;
-use crate::{NostrManager, error::NostrResult};
+use crate::{NostrPlugin, error::NostrResult};
 
 #[sdk_macros::async_trait]
-impl ZapReceiptsService for NostrManager {
+impl ZapReceiptsService for NostrPlugin {
     async fn track_zap(&self, invoice: String, zap_request: String) -> NostrResult<()> {
         self.handlers()
             .await?

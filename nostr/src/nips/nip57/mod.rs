@@ -1,4 +1,4 @@
-mod manager;
+mod forward;
 mod persist;
 mod routines;
 mod sdk_services;
@@ -55,12 +55,18 @@ impl ZapReceiptsService for ZapReceiptsHandler {
         zap_request_event.verify()?;
         self.ctx
             .persister
-            .add_tracked_zap(invoice.clone(), zap_request)?;
+            .add_tracked_zap(invoice.clone(), zap_request)
+            .await?;
         info!("Successfully added zap tracking for invoice {invoice}");
         Ok(())
     }
 
     async fn is_zap(&self, invoice: String) -> NostrResult<bool> {
-        Ok(self.ctx.persister.get_tracked_zap_raw(&invoice)?.is_some())
+        Ok(self
+            .ctx
+            .persister
+            .get_tracked_zap_raw(&invoice)
+            .await?
+            .is_some())
     }
 }

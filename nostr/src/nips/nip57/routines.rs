@@ -4,7 +4,7 @@ use super::ZapReceiptsHandler;
 
 impl ZapReceiptsHandler {
     pub async fn on_init(&self) -> NostrResult<()> {
-        self.ctx.persister.clean_expired_zaps()?;
+        self.ctx.persister.clean_expired_zaps().await?;
         Ok(())
     }
 }

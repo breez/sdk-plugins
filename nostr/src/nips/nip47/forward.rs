@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::NostrManager;
+use crate::NostrPlugin;
 use crate::error::NostrResult;
 use crate::nips::nip47::model::AddConnectionResponse;
 
@@ -10,7 +10,7 @@ use super::model::{
 };
 
 #[sdk_macros::async_trait]
-impl NostrWalletConnectService for NostrManager {
+impl NostrWalletConnectService for NostrPlugin {
     async fn add_connection(
         &self,
         req: AddConnectionRequest,

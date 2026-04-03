@@ -5,7 +5,7 @@ use crate::{
     error::{NostrError, NostrResult},
     event::{EventManager, NostrEventListener},
     handlers::{NostrHandlers, builder::NostrHandlersBuilder},
-    model::{NostrConfig, NostrManagerInfo},
+    model::{NostrConfig, NostrPluginInfo},
 };
 use breez_plugins::{Plugin, PluginStorage};
 use log::{error, info, warn};
@@ -40,13 +40,13 @@ struct Runtime {
     handlers: Arc<NostrHandlers>,
 }
 
-pub struct NostrManager {
+pub struct NostrPlugin {
     config: NostrConfig,
     event_manager: Arc<EventManager>,
     runtime: Mutex<Option<Runtime>>,
 }
 
-impl NostrManager {
+impl NostrPlugin {
     /// Creates a new NostrManager instance.
     ///
     /// Initializes the service with the provided cryptographic keys
@@ -72,17 +72,35 @@ impl NostrManager {
         self.event_manager.remove(id).await
     }
 
-    pub async fn get_info(&self) -> Option<NostrManagerInfo> {
+    pub async fn get_info(&self) -> Option<NostrPluginInfo> {
         let lock = self.runtime.lock().await;
         let runtime = (*lock).as_ref()?;
-        Some(NostrManagerInfo {
+        Some(NostrPluginInfo {
             wallet_pubkey: runtime.ctx.our_keys.public_key().to_hex(),
             connected_relays: self.config.relays(),
         })
     }
+
+    pub async fn on_stop(&self) {
+        info!("Shutting down Nostr plugin");
+        let mut runtime_lock = self.runtime.lock().await;
+        if let Some(ref runtime) = *runtime_lock {
+            if let Err(err) = runtime
+                .ctx
+                .action_trigger
+                .send(ContextAction::Shutdown)
+                .await
+            {
+                warn!("Could not send shutdown command: {err}");
+                return;
+            };
+            runtime.ctx.clear().await;
+            *runtime_lock = None;
+        }
+    }
 }
 
-impl NostrManager {
+impl NostrPlugin {
     #[allow(unused, unused_mut)]
     fn build_handlers(
         &self,
@@ -107,7 +125,7 @@ impl NostrManager {
                 None => tokio::time::sleep(Duration::from_millis(500)).await,
             };
         }
-        Err(NostrError::generic("Nostr manager is not running."))
+        Err(NostrError::generic("Nostr plugin is not running."))
     }
 
     async fn min_refresh_interval(maybe_interval: &mut Option<Interval>) -> Option<()> {
@@ -122,12 +140,8 @@ impl NostrManager {
 }
 
 #[sdk_macros::async_trait]
-impl<SdkServices: NostrSdkServices + 'static> Plugin<SdkServices> for NostrManager {
-    fn id(&self) -> String {
-        "breez-nostr".to_string()
-    }
-
-    async fn on_start(&self, sdk: Arc<SdkServices>, storage: PluginStorage) {
+impl<SdkServices: NostrSdkServices + 'static> Plugin<SdkServices> for NostrPlugin {
+    async fn attach(&self, sdk: Arc<SdkServices>, storage: PluginStorage) {
         let mut runtime_lock = self.runtime.lock().await;
         if runtime_lock.is_some() {
             warn!("Called on_start when service was already running.");
@@ -216,23 +230,5 @@ impl<SdkServices: NostrSdkServices + 'static> Plugin<SdkServices> for NostrManag
                 }
             }
         });
-    }
-
-    async fn on_stop(&self) {
-        info!("Shutting down Nostr Manager");
-        let mut runtime_lock = self.runtime.lock().await;
-        if let Some(ref runtime) = *runtime_lock {
-            if let Err(err) = runtime
-                .ctx
-                .action_trigger
-                .send(ContextAction::Shutdown)
-                .await
-            {
-                warn!("Could not send shutdown command: {err}");
-                return;
-            };
-            runtime.ctx.clear().await;
-            *runtime_lock = None;
-        }
     }
 }

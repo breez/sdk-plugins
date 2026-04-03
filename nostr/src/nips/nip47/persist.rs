@@ -19,21 +19,23 @@ type NwcConnections = BTreeMap<String, NwcConnectionInner>;
 type PaidInvoices = BTreeMap<String, BTreeSet<String>>;
 
 impl Persister {
-    fn set_connections_safe<F, R>(&self, f: F) -> NostrResult<R>
+    async fn set_connections_safe<F, R>(&self, f: F) -> NostrResult<R>
     where
         F: Fn(&mut NwcConnections) -> NostrResult<(bool, R)>,
     {
         self.set_storage_safe(KEY_NWC_CONNECTIONS, Self::list_nwc_connections, f)
+            .await
     }
 
-    fn set_paid_invoices_safe<F, R>(&self, f: F) -> NostrResult<R>
+    async fn set_paid_invoices_safe<F, R>(&self, f: F) -> NostrResult<R>
     where
         F: Fn(&mut PaidInvoices) -> NostrResult<(bool, R)>,
     {
         self.set_storage_safe(KEY_NWC_PAID_INVOICES, Self::list_nwc_paid_invoices, f)
+            .await
     }
 
-    pub(crate) fn add_nwc_connection(
+    pub(crate) async fn add_nwc_connection(
         &self,
         name: String,
         connection: NwcConnectionInner,
@@ -45,10 +47,11 @@ impl Persister {
             connections.insert(name.clone(), connection.clone());
             Ok((true, ()))
         })
+        .await
     }
 
     // Helper method to update a connection's used budget directly
-    pub(crate) fn update_budget(&self, name: &str, delta_sat: i64) -> NostrResult<()> {
+    pub(crate) async fn update_budget(&self, name: &str, delta_sat: i64) -> NostrResult<()> {
         self.set_connections_safe(|connections| {
             let Some(connection) = connections.get_mut(name) else {
                 return Err(NostrError::ConnectionNotFound);
@@ -62,9 +65,10 @@ impl Persister {
             }
             Ok((true, ()))
         })
+        .await
     }
 
-    pub(crate) fn edit_nwc_connection(
+    pub(crate) async fn edit_nwc_connection(
         &self,
         req: EditConnectionRequest,
     ) -> NostrResult<NwcConnectionInner> {
@@ -100,12 +104,12 @@ impl Persister {
                 _ => {}
             }
             Ok((true, connection.clone()))
-        })
+        }).await
     }
 
-    pub(crate) fn get_min_interval(&self) -> Option<u64> {
-        let get_min_connection_interval = || -> NostrResult<Option<u64>> {
-            let connections = self.list_nwc_connections()?;
+    pub(crate) async fn get_min_interval(&self) -> Option<u64> {
+        let get_min_connection_interval = async || -> NostrResult<Option<u64>> {
+            let connections = self.list_nwc_connections().await?;
             if connections.is_empty() {
                 return Ok(None);
             }
@@ -125,7 +129,7 @@ impl Persister {
             }
             Ok(min_interval.map(u64::from))
         };
-        match get_min_connection_interval() {
+        match get_min_connection_interval().await {
             Ok(Some(mut interval)) => {
                 // We set a minimum of MIN_REFRESH_INTERVAL_SEC to avoid breaking the service by
                 // refreshing too frequently
@@ -142,7 +146,7 @@ impl Persister {
 
     /// Refreshes the active connections (expiry and budget) returning two arrays of the
     /// corresponding connection names
-    pub(crate) fn refresh_connections(&self) -> NostrResult<RefreshResult> {
+    pub(crate) async fn refresh_connections(&self) -> NostrResult<RefreshResult> {
         self.set_connections_safe(|connections| {
             let now = utils::now();
             let mut result = RefreshResult::default();
@@ -172,41 +176,46 @@ impl Persister {
                 result,
             ))
         })
+        .await
     }
 
-    pub(crate) fn list_nwc_connections(&self) -> NostrResult<NwcConnections> {
+    pub(crate) async fn list_nwc_connections(&self) -> NostrResult<NwcConnections> {
         let connections = self
             .storage
-            .get_item(KEY_NWC_CONNECTIONS)?
+            .get_item(KEY_NWC_CONNECTIONS)
+            .await?
             .unwrap_or("{}".to_string());
         let connections = serde_json::from_str(&connections)?;
         Ok(connections)
     }
 
-    pub(crate) fn remove_nwc_connection(&self, name: String) -> NostrResult<()> {
+    pub(crate) async fn remove_nwc_connection(&self, name: String) -> NostrResult<()> {
         self.set_connections_safe(|connections| {
             if connections.remove(&name).is_none() {
                 return Err(NostrError::ConnectionNotFound);
             }
             Ok((true, ()))
-        })?;
+        })
+        .await?;
         self.set_paid_invoices_safe(|paid_invoices| {
             paid_invoices.remove(&name);
             Ok((true, ()))
-        })?;
+        })
+        .await?;
         Ok(())
     }
 
-    pub(crate) fn list_nwc_paid_invoices(&self) -> NostrResult<PaidInvoices> {
+    pub(crate) async fn list_nwc_paid_invoices(&self) -> NostrResult<PaidInvoices> {
         let paid_invoices = self
             .storage
-            .get_item(KEY_NWC_PAID_INVOICES)?
+            .get_item(KEY_NWC_PAID_INVOICES)
+            .await?
             .unwrap_or("{}".to_string());
         let paid_invoices = serde_json::from_str(&paid_invoices)?;
         Ok(paid_invoices)
     }
 
-    pub(crate) fn add_nwc_paid_invoice(
+    pub(crate) async fn add_nwc_paid_invoice(
         &self,
         connection: &str,
         invoice: String,
@@ -218,5 +227,6 @@ impl Persister {
             invoices.insert(invoice.clone());
             Ok((true, ()))
         })
+        .await
     }
 }
