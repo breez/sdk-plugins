@@ -8,3 +8,6 @@ pub use storage::*;
 pub trait Plugin<Sdk>: Send + Sync {
     async fn attach(&self, sdk: Arc<Sdk>, storage: PluginStorage);
 }
+
+#[cfg(feature = "uniffi")]
+uniffi::setup_scaffolding!();

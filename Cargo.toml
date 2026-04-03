@@ -19,6 +19,10 @@ sdk-macros = { git = "https://github.com/breez/breez-sdk", rev = "6ad80932b9949f
 async-trait = "0.1.86"
 thiserror = "1.0"
 log = "0.4.20"
+# Fork of uniffi 0.29.5 that fixes Python Protocol generation for async callback
+# methods (plain `def` instead of `async def`). Fixed upstream in 0.30.0.
+# Switch back to upstream once we upgrade to uniffi >= 0.30.
+uniffi = { git = "https://github.com/breez/uniffi-rs", branch = "fix-python-async-protocol-v0.29.5" }
 
 [workspace.lints.clippy]
 empty_line_after_doc_comments = "allow"

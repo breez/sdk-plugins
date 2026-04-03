@@ -1,16 +1,20 @@
 [package]
 name = "breez-plugins"
-edition = "2021"
+edition = "2024"
 version = "0.1.0"
 
 [lints]
 workspace = true
+
+[features]
+uniffi = ["dep:uniffi"]
 
 [dependencies]
 anyhow = { workspace = true }
 sdk-macros = { workspace = true }
 async-trait = { workspace = true }
 thiserror = { workspace = true }
+uniffi = { workspace = true, optional = true }
 log = { workspace = true }
 aes = "0.8.4"
 aes-gcm = "0.10.3"

@@ -6,6 +6,7 @@ use aes_gcm::{
 use anyhow::{Result, bail};
 
 #[derive(Debug, thiserror::Error)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Error))]
 pub enum PluginStorageError {
     #[error("Could not write to storage: value has changed since last read.")]
     DataTooOld,
@@ -35,6 +36,7 @@ impl From<aes_gcm::Error> for PluginStorageError {
 
 pub type StorageResult<T> = Result<T, PluginStorageError>;
 
+#[cfg_attr(feature = "uniffi", uniffi::export(with_foreign))]
 #[async_trait::async_trait]
 pub trait PluginStorageController: Send + Sync {
     async fn get_item(&self, key: String) -> StorageResult<Option<String>>;
