@@ -1,9 +1,9 @@
 use aes::cipher::generic_array::GenericArray;
 use aes_gcm::{
-    aead::{Aead, OsRng},
     AeadCore as _, Aes256Gcm, KeyInit as _, Nonce,
+    aead::{Aead, OsRng},
 };
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 #[derive(Debug, thiserror::Error)]
 pub enum PluginStorageError {
@@ -17,6 +17,14 @@ pub enum PluginStorageError {
     Generic { err: String },
 }
 
+impl PluginStorageError {
+    pub fn generic<T: ToString>(err: T) -> Self {
+        Self::Generic {
+            err: err.to_string(),
+        }
+    }
+}
+
 impl From<aes_gcm::Error> for PluginStorageError {
     fn from(value: aes_gcm::Error) -> Self {
         Self::Encryption {
@@ -25,19 +33,19 @@ impl From<aes_gcm::Error> for PluginStorageError {
     }
 }
 
-type StorageResult<T> = Result<T, PluginStorageError>;
+pub type StorageResult<T> = Result<T, PluginStorageError>;
 
-pub trait DbExecutor {
-    fn get_item(&self, key: &str) -> StorageResult<Option<String>>;
-    fn set_item(&self, key: String, value: String) -> StorageResult<()>;
-    fn remove_item(&self, key: &str) -> StorageResult<()>;
-}
-
+#[async_trait::async_trait]
 pub trait PluginStorageController: Send + Sync {
-    fn run_transaction(
+    async fn get_item(&self, key: String) -> StorageResult<Option<String>>;
+    async fn set_item(&self, key: String, value: String) -> StorageResult<()>;
+    async fn set_item_safe(
         &self,
-        f: &dyn FnOnce(&dyn DbExecutor) -> StorageResult<()>,
+        key: String,
+        value: String,
+        old_value: String,
     ) -> StorageResult<()>;
+    async fn remove_item(&self, key: String) -> StorageResult<()>;
 }
 
 pub struct PluginStorage {
@@ -105,46 +113,42 @@ impl PluginStorage {
     /// # Arguments
     ///   - key: The name of the database key to write into
     ///   - value: The value to write
-    ///   - old_value (optional): The previous value of that field (if any). When provided, it
-    ///     will ensure that the value that's being written has not been modified, throwing a
-    ///     [PluginStorageError::DataTooOld] error otherwise
-    pub fn set_item(
+    pub async fn set_item(&self, key: &str, value: String) -> StorageResult<()> {
+        let scoped_key = self.scoped_key(key);
+        self.controller
+            .set_item(scoped_key, self.encrypt(value)?)
+            .await
+    }
+
+    /// Writes/updates a value in the database, doing so in a thread-safe manner
+    ///
+    /// # Arguments
+    ///   - key: The name of the database key to write into
+    ///   - value: The value to write
+    ///   - old_value: The previous value of that field (if any). It will ensure that the value that's being written has not been modified, throwing a [PluginStorageError::DataTooOld] error otherwise
+    pub async fn set_item_safe(
         &self,
         key: &str,
         value: String,
-        old_value: Option<String>,
+        old_value: String,
     ) -> StorageResult<()> {
         let scoped_key = self.scoped_key(key);
-        self.controller.run_transaction(&|tx: &dyn DbExecutor| {
-            if let Some(old_value) = old_value {
-                if let Some(current_value) = tx.get_item(&scoped_key)? {
-                    let current_value = self.decrypt(current_value)?;
-                    if old_value != current_value {
-                        return Err(PluginStorageError::DataTooOld);
-                    }
-                }
-            }
-            tx.set_item(scoped_key, self.encrypt(value)?)?;
-            Ok(())
-        })
+        self.controller
+            .set_item_safe(scoped_key, self.encrypt(value)?, self.encrypt(old_value)?)
+            .await
     }
 
-    pub fn get_item(&self, key: &str) -> StorageResult<Option<String>> {
+    pub async fn get_item(&self, key: &str) -> StorageResult<Option<String>> {
         let scoped_key = self.scoped_key(key);
-        let mut value = None;
-        self.controller.run_transaction(&|tx: &dyn DbExecutor| {
-            value = tx.get_item(&scoped_key)?;
-            Ok(())
-        })?;
+        let value = self.controller.get_item(scoped_key).await?;
         if let Some(value) = value {
             return Ok(Some(self.decrypt(value)?));
         }
         Ok(None)
     }
 
-    pub fn remove_item(&self, key: &str) -> StorageResult<()> {
+    pub async fn remove_item(&self, key: &str) -> StorageResult<()> {
         let scoped_key = self.scoped_key(key);
-        self.controller
-            .run_transaction(&|tx: &dyn DbExecutor| tx.remove_item(&scoped_key))
+        self.controller.remove_item(scoped_key).await
     }
 }
