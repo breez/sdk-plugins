@@ -144,7 +144,7 @@ impl NostrPlugin {
 
 #[sdk_macros::async_trait]
 impl<SdkServices: NostrSdkServices + 'static> Plugin<SdkServices> for NostrPlugin {
-    async fn attach(&self, sdk: Arc<SdkServices>, storage: PluginStorage) {
+    async fn attach(&self, sdk: Arc<SdkServices>, storage: Arc<PluginStorage>) {
         let mut runtime_lock = self.runtime.lock().await;
         if runtime_lock.is_some() {
             warn!("Called on_start when service was already running.");

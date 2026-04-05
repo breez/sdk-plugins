@@ -33,7 +33,7 @@ impl RuntimeContext {
     pub(crate) async fn new(
         sdk: Arc<dyn NostrSdkServices>,
         config: &NostrConfig,
-        storage: PluginStorage,
+        storage: Arc<PluginStorage>,
         event_manager: Arc<EventManager>,
         action_tx: mpsc::Sender<ContextAction>,
     ) -> Result<Self> {

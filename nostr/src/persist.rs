@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use breez_plugins::{PluginStorage, PluginStorageError};
 use serde::Serialize;
 
@@ -8,11 +10,11 @@ const MAX_SAFE_WRITE_RETRIES: u64 = 3;
 const KEY_NOSTR_SECKEY: &str = "nostr_seckey";
 
 pub(crate) struct Persister {
-    pub(crate) storage: PluginStorage,
+    pub(crate) storage: Arc<PluginStorage>,
 }
 
 impl Persister {
-    pub(crate) fn new(storage: PluginStorage) -> Self {
+    pub(crate) fn new(storage: Arc<PluginStorage>) -> Self {
         Self { storage }
     }
 
